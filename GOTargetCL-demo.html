@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GOTargetCL · Administración de Packing</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/datatables.net-bs5@1.13.8/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/datatables.net-buttons-bs5@2.4.2/css/buttons.bootstrap5.min.css">
+<style>
+/* Layout: menú lateral fijo + contenido; en móvil el menú se despliega (pensado para la pistola Unitech EA520) */
+:root{
+  --gt-verde:#2f6b3f; --gt-verde-osc:#1c3426; --gt-verde-cl:#e8f2ea;
+  --gt-rojo:#b8323a; --gt-ambar:#d98e04; --gt-gris:#6b7280;
+  --gt-bg:#f4f6f3; --gt-borde:#e2e7e1; --gt-card:#ffffff;
+}
+body{background:var(--gt-bg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#1f2a22;}
+.gt-layout{display:flex;min-height:100vh;}
+.gt-sidebar{width:236px;background:var(--gt-verde-osc);color:#fff;display:flex;flex-direction:column;position:fixed;inset:0 auto 0 0;z-index:1030;transition:transform .2s;}
+.gt-brand{display:flex;align-items:center;gap:.7rem;padding:1.1rem 1rem;border-bottom:1px solid rgba(255,255,255,.08);}
+.gt-logo{width:38px;height:38px;border-radius:10px;background:var(--gt-rojo);display:grid;place-items:center;font-size:1.25rem;color:#fff;}
+.gt-brand-name{font-weight:700;letter-spacing:.2px;}
+.gt-brand-name b{color:#f3a7ab;font-weight:700;}
+.gt-brand-sub{font-size:.75rem;color:rgba(255,255,255,.6);}
+.gt-nav{padding:.75rem .5rem;flex:1;overflow-y:auto;}
+.gt-nav-link{display:flex;align-items:center;gap:.7rem;padding:.55rem .75rem;border-radius:8px;color:rgba(255,255,255,.78);text-decoration:none;font-size:.93rem;margin-bottom:2px;}
+.gt-nav-link:hover{background:rgba(255,255,255,.07);color:#fff;}
+.gt-nav-link.active{background:var(--gt-verde);color:#fff;}
+.gt-nav-link .gt-ro{margin-left:auto;font-size:.8rem;opacity:.6;}
+.gt-sidebar-foot{padding:.8rem 1rem;border-top:1px solid rgba(255,255,255,.08);font-size:.8rem;color:rgba(255,255,255,.55);}
+.gt-main{flex:1;margin-left:236px;min-width:0;}
+.gt-topbar{display:flex;align-items:center;gap:.75rem;background:#fff;border-bottom:1px solid var(--gt-borde);padding:.7rem 1.4rem;position:sticky;top:0;z-index:1020;}
+.gt-title{font-size:1.2rem;margin:0;font-weight:650;}
+.gt-badge-perfil{background:var(--gt-verde-cl);color:var(--gt-verde);font-weight:600;}
+.gt-content{padding:1.4rem;}
+@media (max-width:991px){
+  .gt-sidebar{transform:translateX(-100%);} .gt-sidebar.open{transform:none;}
+  .gt-main{margin-left:0;} .gt-content{padding:1rem;}
+}
+.gt-card{background:var(--gt-card);border:1px solid var(--gt-borde);border-radius:12px;padding:1rem 1.1rem;height:100%;min-width:0;}
+.gt-card h6{font-size:.8rem;text-transform:uppercase;letter-spacing:.5px;color:var(--gt-gris);font-weight:650;margin-bottom:.8rem;}
+.gt-kpi{display:flex;align-items:center;gap:.9rem;}
+.gt-kpi .ic{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;font-size:1.3rem;flex-shrink:0;}
+.gt-kpi .val{font-size:1.55rem;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums;}
+.gt-kpi .lbl{font-size:.8rem;color:var(--gt-gris);}
+a.gt-kpi-link{color:inherit;text-decoration:none;} a.gt-kpi-link:hover .gt-card{border-color:var(--gt-verde);}
+.ic-verde{background:var(--gt-verde-cl);color:var(--gt-verde);}
+.ic-rojo{background:#f8e5e6;color:var(--gt-rojo);}
+.ic-ambar{background:#fbf0d9;color:var(--gt-ambar);}
+.ic-azul{background:#e3edf8;color:#2b5d94;}
+.gt-chart{position:relative;height:260px;}
+.gt-chart.sm{height:220px;}
+table.dataTable{font-size:.88rem;}
+table.dataTable thead th{background:#f7f9f6;font-weight:650;white-space:nowrap;}
+.dt-buttons.btn-group{gap:.35rem;} .dt-buttons.btn-group>.btn{border-radius:.375rem !important;font-size:.8rem;}
+.gt-tarja{font-family:ui-monospace,Consolas,monospace;font-weight:600;white-space:nowrap;}
+.nowrap td{white-space:nowrap;}
+.num{text-align:right;font-variant-numeric:tabular-nums;}
+.badge.st{font-weight:600;}
+.st-ok{background:#e1f0e4;color:#22663a;} .st-warn{background:#fbefd5;color:#94600a;}
+.st-bad{background:#f8e1e3;color:#9b2730;} .st-info{background:#e1ecf8;color:#25548a;} .st-mute{background:#eceeec;color:#555;}
+.gt-scan{font-family:ui-monospace,Consolas,monospace;font-size:1.15rem;letter-spacing:1px;}
+.gt-scan-wrap{position:relative;}
+.gt-scan-wrap .bi{position:absolute;left:.8rem;top:50%;transform:translateY(-50%);color:var(--gt-gris);font-size:1.2rem;}
+.gt-scan-wrap input{padding-left:2.5rem;}
+.gt-timeline{list-style:none;padding:0;margin:0;position:relative;}
+.gt-timeline:before{content:"";position:absolute;left:15px;top:4px;bottom:4px;width:2px;background:var(--gt-borde);}
+.gt-timeline li{position:relative;padding:0 0 1rem 44px;}
+.gt-timeline .dot{position:absolute;left:4px;top:0;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:.75rem;background:#fff;border:2px solid var(--gt-verde);color:var(--gt-verde);}
+.gt-timeline .dot.bad{border-color:var(--gt-rojo);color:var(--gt-rojo);}
+.gt-timeline .t{font-weight:600;} .gt-timeline .m{font-size:.82rem;color:var(--gt-gris);}
+.gt-login-bg{min-height:100vh;display:grid;place-items:center;background:linear-gradient(135deg,var(--gt-verde-osc),#2f5a3a 60%,#7a2a2f);padding:1rem;}
+.gt-login{width:100%;max-width:410px;background:#fff;border-radius:16px;padding:2rem;box-shadow:0 20px 50px rgba(0,0,0,.25);}
+.gt-matriz td,.gt-matriz th{text-align:center;vertical-align:middle;}
+.gt-matriz td:first-child,.gt-matriz th:first-child{text-align:left;}
+.gt-matriz select{min-width:125px;font-size:.8rem;}
+.btn-gt{background:var(--gt-verde);border-color:var(--gt-verde);color:#fff;} .btn-gt:hover{background:#255733;border-color:#255733;color:#fff;}
+.gt-demo-tag{font-size:.7rem;background:#fbefd5;color:#94600a;border-radius:4px;padding:.1rem .4rem;font-weight:600;}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div id="vistaLogin" class="gt-login-bg" hidden>
+  <div class="gt-login">
+    <div class="text-center mb-4">
+      <div class="gt-logo mx-auto mb-2" style="width:56px;height:56px;font-size:1.7rem"><i class="bi bi-bullseye"></i></div>
+      <h1 class="h4 mb-0 fw-bold">GOTarget<span style="color:var(--gt-rojo)">CL</span></h1>
+      <div class="text-muted small">Trazabilidad de bins y pallets ·</div>
+    </div>
+    <div id="loginError" class="alert alert-danger py-2 small" hidden></div>
+    <form id="frmLogin" autocomplete="off">
+      <div class="mb-3">
+        <label class="form-label small fw-semibold" for="lgUsuario">Usuario</label>
+        <div class="input-group"><span class="input-group-text"><i class="bi bi-person"></i></span>
+          <input type="text" id="lgUsuario" class="form-control" required></div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label small fw-semibold" for="lgClave">Contraseña</label>
+        <div class="input-group"><span class="input-group-text"><i class="bi bi-lock"></i></span>
+          <input type="password" id="lgClave" class="form-control" required></div>
+      </div>
+      <button class="btn btn-gt w-100"><i class="bi bi-box-arrow-in-right me-1"></i> Ingresar</button>
+    </form>
+    <hr class="my-4">
+    <div class="small">
+      <div class="fw-semibold mb-2 text-muted"><i class="bi bi-info-circle me-1"></i>Usuarios de demostración (clic para completar)</div>
+      <div class="d-flex flex-wrap gap-1" id="loginDemo"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="vistaApp" class="gt-layout" hidden>
+  <aside class="gt-sidebar" id="gtSidebar">
+    <div class="gt-brand">
+      <span class="gt-logo"><i class="bi bi-bullseye"></i></span>
+      <div><div class="gt-brand-name">GOTarget<b>CL</b></div><div class="gt-brand-sub">Packing San Clemente</div></div>
+    </div>
+    <nav class="gt-nav" id="gtNav"></nav>
+    <div class="gt-sidebar-foot">Temporada 2026 · Demo</div>
+  </aside>
+  <div class="gt-main">
+    <header class="gt-topbar">
+      <button class="btn btn-sm btn-light d-lg-none" id="btnMenu" aria-label="Menú"><i class="bi bi-list"></i></button>
+      <h1 class="gt-title" id="gtTitulo"></h1>
+      <div class="ms-auto d-flex align-items-center gap-3">
+        <div class="text-end lh-sm d-none d-sm-block">
+          <div class="fw-semibold" id="gtNombre"></div>
+          <span class="badge gt-badge-perfil" id="gtPerfil"></span>
+        </div>
+        <button class="btn btn-sm btn-outline-secondary" id="btnSalir" title="Cerrar sesión"><i class="bi bi-box-arrow-right"></i></button>
+      </div>
+    </header>
+    <main class="gt-content" id="gtMain"></main>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/datatables.net@1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/datatables.net-bs5@1.13.8/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/datatables.net-buttons@2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/datatables.net-buttons-bs5@2.4.2/js/buttons.bootstrap5.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/datatables.net-buttons@2.4.2/js/buttons.html5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.all.min.js"></script>
+
+<script>
+/* =====================================================================
+   GOTargetCL — Demo en un solo archivo
+   Existencias reales: Existencia Manzanas.pdf (28/05/2024) y Existencia PT.xlsx
+   Usuarios y permisos: usuarios_frutitrack.xlsx
+   Operación (recepciones, OTs, movimientos, productores): datos ficticios
+   La "base de datos" vive en el navegador (localStorage); se reinicia desde Administración.
+   ===================================================================== */
+const EXIST_PALLETS = [["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 20.0, "MZ4000", "LATAM", 49, "150", "PR", 4.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 20.0, "MZ4000", "LATAM", 49, "150", "EF", 2.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 20.0, "MZ4000", "LATAM", 49, "150", "PRA", 2.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 20.0, "MZ4000", "LATAM", 49, "163", "PR", 6.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 20.0, "MZ4000", "LATAM", 49, "163", "EF", 4.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 20.0, "MZ4000", "LATAM", 49, "163", "PRA", 2.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 20.0, "MZ4000", "LATAM", 49, "163", "EA", 1.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 20.0, "MZ4000", "LATAM", 49, "175", "PR", 5.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 20.0, "MZ4000", "LATAM", 49, "175", "EF", 3.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 20.0, "MZ4000", "LATAM", 49, "175", "PRA", 1.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 20.0, "MZ4000", "LATAM", 49, "175", "EA", 1.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 20.0, "MZ4000", "LATAM", 49, "198", "PR", 5.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 20.0, "MZ4000", "LATAM", 49, "198", "EF", 4.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 20.0, "MZ4000", "LATAM", 49, "198", "PRA", 1.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 20.0, "MZ4000", "LATAM", 49, "198", "EA", 1.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "PINK LADY", "SIN N/V", 6.5, "PL1100", "EUROPA", 120, "028", "PR", 3.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "PINK LADY", "SIN N/V", 6.5, "PL1100", "EUROPA", 120, "030", "PR", 6.1], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "PINK LADY", "SIN N/V", 6.5, "PL1100", "EUROPA", 120, "032", "PR", 3.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "PINK LADY", "SIN N/V", 6.5, "PL1100", "EUROPA", 120, "033", "PR", 10.9], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "PINK LADY", "SIN N/V", 6.5, "PL1100", "EUROPA", 120, "035", "PR", 31.1], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "PINK LADY", "SIN N/V", 17.5, "PL1000", "EUROPA", 56, "110", "PR", 15.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "PINK LADY", "SIN N/V", 17.5, "PL1000", "EUROPA", 56, "135", "PR", 4.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "PINK LADY", "SIN N/V", 320.0, "CP320", "TAIWAN", 3, "120", "PR", 1.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "PINK LADY", "SIN N/V", 320.0, "PL320", "EUROPA", 3, "120", "PR", 7.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "FUJI", "SIN N/V", 10.8, "MF1500", "USA", 65, "113", "PR", 1.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "FUJI", "SIN N/V", 10.8, "MF1500", "USA", 65, "113", "EF", 17.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "FUJI", "SIN N/V", 10.8, "MF1500", "USA", 65, "125", "PR", 1.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "FUJI", "SIN N/V", 10.8, "MF1500", "USA", 65, "125", "EF", 17.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "FUJI", "SIN N/V", 10.8, "MF1500", "USA", 65, "150", "PR", 1.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "FUJI", "SIN N/V", 10.8, "MF1500", "USA", 65, "150", "EF", 18.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "FUJI", "SIN N/V", 10.8, "MF1501", "USA", 65, "113", "EF", 2.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "FUJI", "SIN N/V", 10.8, "MF1501", "USA", 65, "125", "EF", 1.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "FUJI", "SIN N/V", 10.8, "MF1501", "USA", 65, "150", "EF", 2.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "FUJI", "SIN N/V", 19.5, "MF4000", "TAIWAN", 49, "100", "EF", 0.7], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "FUJI", "SIN N/V", 19.5, "MF4000", "TAIWAN", 49, "100", "EA", 0.6], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "FUJI", "SIN N/V", 19.5, "MF4000", "TAIWAN", 49, "113", "PR", 1.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "FUJI", "SIN N/V", 19.5, "MF4000", "TAIWAN", 49, "113", "EF", 2.9], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "FUJI", "SIN N/V", 19.5, "MF4000", "TAIWAN", 49, "113", "EA", 0.4], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "FUJI", "SIN N/V", 19.5, "MF4000", "TAIWAN", 49, "125", "EF", 2.4], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "FUJI", "SIN N/V", 19.5, "MF4000", "TAIWAN", 49, "125", "EA", 2.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "FUJI", "SIN N/V", 19.5, "MF4000", "TAIWAN", 49, "125", "FY", 1.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "FUJI", "SIN N/V", 19.5, "MF4200", "LATAM", 49, "113", "EA", 3.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "FUJI", "SIN N/V", 19.5, "MF4200", "LATAM", 49, "113", "FY", 1.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "FUJI", "SIN N/V", 19.5, "MF4200", "LATAM", 49, "150", "EF", 1.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "FUJI", "SIN N/V", 19.5, "MF4200", "LATAM", 49, "150", "EA", 3.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "FUJI", "SIN N/V", 19.5, "MF4200", "LATAM", 49, "150", "FY", 6.0], ["C.F. LUIS CRUZ", "EXPORTACION", "Pallet", "CRIPPS PINK", "SIN N/V", 17.5, "CP1001", "USA", 49, "100", "PRA", 1.0], ["C.F. LUIS CRUZ", "NACIONAL", "Pallet", "PINK LADY", "SIN N/V", 18.2, "CM1000", "NACIONAL", 56, "080", "CEM", 1.6], ["C.F. LUIS CRUZ", "NACIONAL", "Pallet", "PINK LADY", "SIN N/V", 18.2, "CM1000", "NACIONAL", 56, "090", "CEM", 0.4], ["C.F. LUIS CRUZ", "NACIONAL", "Pallet", "PINK LADY", "SIN N/V", 18.2, "CM1000", "NACIONAL", 56, "100", "CEM", 2.9], ["C.F. LUIS CRUZ", "NACIONAL", "Pallet", "PINK LADY", "SIN N/V", 18.2, "CM1000", "NACIONAL", 56, "110", "CEM", 3.1], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 10.8, "MH1500", "USA", 65, "100", "EF", 1.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 10.8, "MH1500", "USA", 65, "113", "PR", 10.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 10.8, "MH1500", "USA", 65, "113", "EF", 1.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 10.8, "MH1500", "USA", 65, "125", "PR", 8.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 10.8, "MH1500", "USA", 65, "150", "PR", 3.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 12.0, "MH6101", "USA", 65, "050", "PR", 11.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 12.0, "MH6101", "USA", 65, "055", "PR", 6.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 12.0, "MH6101", "USA", 65, "060", "PR", 8.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 12.0, "MH6102", "USA", 60, "045", "PR", 9.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 16.32, "MH1016", "USA", 49, "113", "PR", 4.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 16.32, "MH1016", "USA", 49, "125", "PR", 3.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 16.32, "MH1016", "USA", 49, "150", "PR", 3.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "CM1500", "NACIONAL", 49, "056", "CPR", 9.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "CM1500", "NACIONAL", 49, "064", "CPR", 8.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "CM1500", "NACIONAL", 49, "072", "CPR", 9.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "CM1500", "NACIONAL", 49, "150", "CPR", 1.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "CM1501", "NACIONAL", 56, "080", "CPR", 14.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "CM1501", "NACIONAL", 56, "090", "CPR", 11.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "CM1501", "NACIONAL", 56, "100", "CPR", 6.8], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "CM1501", "NACIONAL", 56, "110", "CPR", 8.3], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "CM1501", "NACIONAL", 56, "120", "CPR", 5.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "CM1501", "NACIONAL", 56, "150", "CPR", 1.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "MH1000", "USA", 49, "048", "PR", 1.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "MH1000", "USA", 49, "064", "EF", 1.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "MH1000", "USA", 49, "080", "PR", 2.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "MH1000", "USA", 49, "080", "EA", 1.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "MH1000", "USA", 49, "088", "PR", 1.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "MH1001", "USA", 49, "056", "PR", 11.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "MH1001", "USA", 49, "056", "PRA", 11.9], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "MH1001", "USA", 49, "064", "EF", 1.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "MH1001", "USA", 49, "064", "PRA", 12.1], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "MH1001", "USA", 49, "072", "PRA", 18.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "MH1001", "USA", 49, "080", "PRA", 34.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "MH1001", "USA", 49, "088", "PR", 16.5], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "MH1001", "USA", 49, "088", "PRA", 17.5], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "MH1001", "USA", 49, "100", "PR", 1.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "MH1001", "USA", 49, "100", "EA", 1.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "MH2000", "ASIA", 49, "100", "PR", 13.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "MH4000", "LATAM", 49, "100", "PRA", 3.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 10.8, "MZ1500", "USA", 65, "100", "PR", 6.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 10.8, "MZ1500", "USA", 65, "113", "EF", 5.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 10.8, "MZ1500", "USA", 65, "125", "PR", 3.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 10.8, "MZ1500", "USA", 65, "125", "EF", 6.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 16.32, "MZ1015", "USA", 56, "110", "PR", 7.4], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 16.32, "MZ1015", "USA", 56, "110", "EF", 2.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 16.32, "MZ1015", "USA", 56, "110", "PRA", 1.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 16.32, "MZ1015", "USA", 56, "110", "EA", 1.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 16.32, "MZ1015", "USA", 56, "120", "PR", 7.1], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 16.32, "MZ1015", "USA", 56, "120", "EF", 5.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 16.32, "MZ1015", "USA", 56, "120", "PRA", 2.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 16.32, "MZ1015", "USA", 56, "120", "EA", 2.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 16.32, "MZ1015", "USA", 56, "150", "PR", 5.5], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 16.32, "MZ1015", "USA", 56, "150", "EF", 4.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 16.32, "MZ1015", "USA", 56, "150", "PRA", 1.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 16.32, "MZ1015", "USA", 56, "150", "EA", 1.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 18.2, "REEM18", "USA", 56, "080", "PR", 12.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 18.2, "REEM18", "USA", 56, "080", "EF", 4.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 18.2, "REEM18", "USA", 56, "090", "PR", 10.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 18.2, "REEM18", "USA", 56, "090", "EF", 3.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 19.2, "MZ2001", "LATAM", 49, "100", "EA", 0.9], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 19.2, "MZ2001", "LATAM", 49, "113", "EA", 0.1], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 19.2, "MZ2001", "LATAM", 49, "125", "EA", 2.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 19.2, "MZ3002", "LATAM", 49, "150", "FY", 1.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 19.2, "REEM19", "USA", 49, "100", "PR", 6.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 19.2, "REEM19", "USA", 49, "100", "EF", 7.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 19.2, "REEM19", "USA", 49, "113", "PR", 23.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 19.2, "REEM19", "USA", 49, "113", "EF", 11.3], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 19.2, "REEM19", "USA", 49, "125", "PR", 18.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 19.2, "REEM19", "USA", 49, "125", "EF", 16.7], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 19.2, "REEM19A", "USA", 49, "100", "PR", 9.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 19.2, "REEM19A", "USA", 49, "100", "EF", 3.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 20.0, "MZ4000", "LATAM", 49, "163", "EA", 1.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 20.0, "MZ4000", "LATAM", 49, "163", "FY", 1.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 20.0, "MZ4000", "LATAM", 49, "175", "PR", 6.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 20.0, "MZ4000", "LATAM", 49, "175", "EF", 9.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 20.0, "MZ4000", "LATAM", 49, "175", "PRA", 2.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 20.0, "MZ4000", "LATAM", 49, "175", "EA", 2.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 20.0, "MZ4000", "LATAM", 49, "175", "FY", 2.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 20.0, "MZ4000", "LATAM", 49, "198", "PR", 5.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 20.0, "MZ4000", "LATAM", 49, "198", "EF", 10.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 20.0, "MZ4000", "LATAM", 49, "198", "PRA", 1.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 20.0, "MZ4000", "LATAM", 49, "198", "EA", 2.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "ROYAL GALA", "SIN N/V", 20.0, "MZ4000", "LATAM", 49, "198", "FY", 1.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "GRANNY SMITH", "SIN N/V", 18.2, "MG1000", "USA", 56, "070", "PR", 2.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "GRANNY SMITH", "SIN N/V", 18.2, "MG1000", "USA", 56, "070", "PRA", 9.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "GRANNY SMITH", "SIN N/V", 18.2, "MG1000", "USA", 56, "080", "PR", 2.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "GRANNY SMITH", "SIN N/V", 18.2, "MG1000", "USA", 56, "080", "PRA", 8.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "GRANNY SMITH", "SIN N/V", 18.2, "MG1001", "LATAM", 56, "110", "PRA", 3.8], ["C.F. RETIRO", "EXPORTACION", "Pallet", "GRANNY SMITH", "SIN N/V", 18.2, "MG1001", "LATAM", 56, "120", "PRA", 4.2], ["C.F. RETIRO", "EXPORTACION", "Pallet", "GRANNY SMITH", "SIN N/V", 18.2, "MG1001", "LATAM", 56, "135", "PRA", 0.2], ["C.F. RETIRO", "EXPORTACION", "Pallet", "GRANNY SMITH", "SIN N/V", 18.2, "MG1001", "LATAM", 56, "150", "PRA", 1.8], ["C.F. RETIRO", "EXPORTACION", "Pallet", "GRANNY SMITH", "SIN N/V", 18.2, "MG1002", "EUROPA", 56, "090", "PRA", 2.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "GRANNY SMITH", "SIN N/V", 18.2, "MG1002", "EUROPA", 56, "110", "PRA", 1.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "GRANNY SMITH", "SIN N/V", 18.2, "MG1003", "USA", 56, "070", "PRA", 3.6], ["C.F. RETIRO", "EXPORTACION", "Pallet", "GRANNY SMITH", "SIN N/V", 18.2, "MG1003", "USA", 56, "080", "PR", 1.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "GRANNY SMITH", "SIN N/V", 18.2, "MG1003", "USA", 56, "080", "PRA", 2.4], ["C.F. RETIRO", "EXPORTACION", "Pallet", "GRANNY SMITH", "SIN N/V", 18.2, "MG1003", "USA", 56, "090", "PR", 3.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "GRANNY SMITH", "SIN N/V", 18.2, "MG1003", "USA", 56, "090", "PRA", 10.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "GRANNY SMITH", "SIN N/V", 18.2, "MG1003", "USA", 56, "100", "PRA", 1.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "KANZI NICOTER", "SIN N/V", 6.5, "MK1100", "EUROPA", 110, "030", "PR", 5.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "KANZI NICOTER", "SIN N/V", 6.5, "MK1100", "EUROPA", 110, "033", "PR", 1.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "KANZI NICOTER", "SIN N/V", 6.5, "MK1100", "EUROPA", 110, "035", "PR", 6.0], ["C.F. RETIRO", "EXPORTACION", "Pallet", "KANZI NICOTER", "SIN N/V", 6.5, "MK1100", "EUROPA", 110, "039", "PR", 2.0], ["C.F. RETIRO", "EXPORTACION", "BINS", "NIKITA NICOTER", "SIN N/V", 360.0, "BIPSP360", "USA", 1, "100", "C1", 101.0], ["C.F. RETIRO", "EXPORTACION", "BINS", "NIKITA NICOTER", "SIN N/V", 360.0, "BIPSP360", "USA", 1, "110", "C1", 100.0], ["C.F. RETIRO", "EXPORTACION", "BINS", "NIKITA NICOTER", "SIN N/V", 360.0, "BIPSP360", "USA", 1, "120", "C1", 92.0], ["C.F. RETIRO", "EXPORTACION", "BINS", "NIKITA NICOTER", "SIN N/V", 360.0, "BIPSP360", "USA", 1, "150", "C1", 76.0], ["C.F. RETIRO", "NACIONAL", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "CM1500", "NACIONAL", 49, "056", "CEM", 8.0], ["C.F. RETIRO", "NACIONAL", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "CM1500", "NACIONAL", 49, "072", "CEM", 1.0], ["C.F. RETIRO", "NACIONAL", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "CM1500", "NACIONAL", 49, "125", "CEM", 1.0], ["C.F. RETIRO", "NACIONAL", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "CM1501", "NACIONAL", 56, "080", "CEM", 0.8], ["C.F. RETIRO", "NACIONAL", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "CM1501", "NACIONAL", 56, "090", "CEM", 1.3], ["C.F. RETIRO", "NACIONAL", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "CM1501", "NACIONAL", 56, "110", "CEM", 4.0], ["C.F. RETIRO", "NACIONAL", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "CM1501", "NACIONAL", 56, "120", "CEM", 4.0], ["C.F. RETIRO", "NACIONAL", "Pallet", "HONEY CRISP", "SIN N/V", 17.5, "CM1501", "NACIONAL", 56, "150", "CEM", 2.0], ["C.F. RETIRO", "NACIONAL", "Pallet", "ROYAL GALA", "SIN N/V", 18.2, "CM1000", "NACIONAL", 56, "110", "CEM", 0.3], ["C.F. RETIRO", "NACIONAL", "Pallet", "ROYAL GALA", "SIN N/V", 18.2, "CM1000", "NACIONAL", 56, "120", "CEM", 3.0], ["C.F. RETIRO", "NACIONAL", "Pallet", "ROYAL GALA", "SIN N/V", 18.2, "CM1000", "NACIONAL", 56, "135", "CEM", 2.7], ["C.F. RETIRO", "NACIONAL", "Pallet", "ROYAL GALA", "SIN N/V", 19.2, "CM2000", "NACIONAL", 49, "113", "CEM", 3.9], ["C.F. RETIRO", "NACIONAL", "Pallet", "ROYAL GALA", "SIN N/V", 19.2, "CM2000", "NACIONAL", 49, "125", "CEM", 4.1], ["C.F. RETIRO", "NACIONAL", "Pallet", "ROYAL GALA", "SIN N/V", 20.0, "CM3000", "NACIONAL", 49, "150", "CEM", 2.8], ["C.F. RETIRO", "NACIONAL", "Pallet", "ROYAL GALA", "SIN N/V", 20.0, "CM3000", "NACIONAL", 49, "163", "CEM", 1.2], ["C.F. RETIRO", "NACIONAL", "Pallet", "ROYAL GALA", "SIN N/V", 20.0, "CM3000", "NACIONAL", 49, "175", "CEM", 1.8], ["C.F. RETIRO", "NACIONAL", "Pallet", "ROYAL GALA", "SIN N/V", 20.0, "CM3000", "NACIONAL", 49, "198", "CEM", 1.2], ["C.F. RETIRO", "NACIONAL", "Pallet", "GRANNY SMITH", "SIN N/V", 18.2, "CM1000", "NACIONAL", 56, "070", "CEM", 11.0], ["C.F. RETIRO", "NACIONAL", "Pallet", "GRANNY SMITH", "SIN N/V", 18.2, "CM1000", "NACIONAL", 56, "080", "CEM", 11.0], ["C.F. RETIRO", "NACIONAL", "Pallet", "GRANNY SMITH", "SIN N/V", 18.2, "CM1000", "NACIONAL", 56, "090", "CEM", 11.7], ["C.F. RETIRO", "NACIONAL", "Pallet", "GRANNY SMITH", "SIN N/V", 18.2, "CM1000", "NACIONAL", 56, "100", "CEM", 8.3], ["C.F. RETIRO", "NACIONAL", "Pallet", "GRANNY SMITH", "SIN N/V", 18.2, "CM1000", "NACIONAL", 56, "110", "CEM", 8.8], ["C.F. RETIRO", "NACIONAL", "Pallet", "GRANNY SMITH", "SIN N/V", 18.2, "CM1000", "NACIONAL", 56, "120", "CEM", 6.2], ["C.F. RETIRO", "NACIONAL", "Pallet", "GRANNY SMITH", "SIN N/V", 18.2, "CM1000", "NACIONAL", 56, "135", "CEM", 2.5], ["C.F. RETIRO", "NACIONAL", "Pallet", "GRANNY SMITH", "SIN N/V", 18.2, "CM1000", "NACIONAL", 56, "150", "CEM", 0.5], ["C.F. RETIRO", "NACIONAL", "Pallet", "KANZI", "SIN N/V", 18.2, "CM1000", "NACIONAL", 56, "070", "CEM", 26.5], ["C.F. RETIRO", "NACIONAL", "Pallet", "KANZI", "SIN N/V", 18.2, "CM1000", "NACIONAL", 56, "080", "CEM", 23.8], ["C.F. RETIRO", "NACIONAL", "Pallet", "KANZI", "SIN N/V", 18.2, "CM1000", "NACIONAL", 56, "090", "CEM", 19.7], ["C.F. RETIRO", "NACIONAL", "Pallet", "KANZI", "BELLER EXPORT SPA", 18.2, "CM1000", "NACIONAL", 56, "080", "CEM", 8.2], ["C.F. RETIRO", "NACIONAL", "Pallet", "KANZI", "BELLER EXPORT SPA", 18.2, "CM1000", "NACIONAL", 56, "090", "CEM", 5.8], ["C.F. RETIRO", "NACIONAL", "Pallet", "KANZI", "BELLER EXPORT SPA", 18.2, "CM1000", "NACIONAL", 56, "110", "CEM", 3.0], ["C.F. RETIRO", "NACIONAL", "Pallet", "KANZI", "BELLER EXPORT SPA", 18.2, "CM1000", "NACIONAL", 56, "120", "CEM", 5.0]];
+const EXIST_PT = [["CM1000", "CEM", "080", 12], ["CM1000", "CEM", "090", 27], ["CM1000", "CEM", "100", 31], ["CM1000", "CEM", "110", 28], ["CM1000", "CEM", "120", 107], ["CM1000", "CEM", "135", 43], ["MZ1000", "EA", "080", 7], ["MZ1000", "EA", "090", 11], ["MZ1000", "EF", "080", 38], ["MZ1000", "EF", "090", 30], ["MZ1000", "PR", "080", 112], ["MZ1000", "PR", "090", 112], ["MZ1000", "PRA", "080", 37], ["MZ1000", "PRA", "090", 56], ["MZ1000", "PRA", "100", 13], ["MZ1015", "EA", "100", 41], ["MZ1015", "EA", "110", 81], ["MZ1015", "EA", "120", 122], ["MZ1015", "EA", "150", 14], ["MZ1015", "EF", "100", 112], ["MZ1015", "EF", "110", 80], ["MZ1015", "EF", "120", 112], ["MZ1015", "EF", "150", 112], ["MZ1015", "PR", "150", 112], ["MZ1015", "PRA", "150", 19], ["MZ2000", "EA", "113", 7], ["MZ2000", "PR", "100", 245], ["MZ2000", "PR", "113", 343], ["MZ2000", "PR", "125", 539], ["MZ2000", "PRA", "100", 147], ["MZ2000", "PRA", "113", 147], ["MZ2000", "PRA", "125", 174], ["MZ3000", "EA", "150", 83], ["MZ3000", "EA", "163", 29], ["MZ3000", "EA", "175", 23], ["MZ3000", "EF", "150", 289], ["MZ3000", "EF", "163", 207], ["MZ3000", "EF", "175", 193], ["MZ3000", "PR", "150", 579], ["MZ3000", "PR", "163", 294], ["MZ3000", "PR", "175", 547], ["MZ3000", "PRA", "150", 203], ["MZ3000", "PRA", "163", 98], ["MZ3000", "PRA", "175", 54], ["MZ3001", "EA", "198", 26], ["MZ3001", "EF", "198", 98], ["MZ3001", "PR", "198", 294], ["MZ3001", "PRA", "198", 98], ["MZ4000", "EA", "163", 4], ["MZ4000", "EF", "163", 49], ["MZ4000", "EF", "175", 49], ["MZ4000", "EF", "198", 26], ["MZ4000", "PR", "163", 34], ["MZ4000", "PR", "175", 64], ["MZ4000", "PR", "198", 35], ["MZ4000", "PRA", "163", 12], ["MZ4000", "PRA", "175", 3], ["MZ4000", "PRA", "198", 29], ["REEM18", "EF", "090", 56], ["REEM18", "PR", "080", 87], ["REEM18", "PR", "090", 92], ["REEM19", "EF", "100", 196], ["REEM19", "EF", "113", 339], ["REEM19", "EF", "125", 498], ["REEM19", "PR", "100", 245], ["REEM19", "PR", "113", 490], ["REEM19", "PR", "125", 784]];
+
+'use strict';
+const DB_KEY = 'gotargetcl_demo_v1';
+const SES_KEY = 'gotargetcl_sesion';
+const VARIEDADES = ['ROYAL GALA', 'PINK LADY', 'FUJI', 'CRIPPS PINK', 'HONEY CRISP', 'GRANNY SMITH', 'KANZI'];
+const COLORES = { 'ROYAL GALA': 'Rojo', 'PINK LADY': 'Bicolor', 'FUJI': 'Estriado', 'CRIPPS PINK': 'Bicolor', 'HONEY CRISP': 'Bicolor', 'GRANNY SMITH': 'Verde', 'KANZI': 'Rojo' };
+const CALIBRES = ['080', '090', '100', '113', '125', '135', '150'];
+const MODULOS = {
+  dashboard: ['Dashboard', 'bi-speedometer2'],
+  existencias: ['Existencias', 'bi-box-seam'],
+  recepcion: ['Recepción', 'bi-truck'],
+  ordenes: ['Órdenes de Trabajo', 'bi-clipboard-check'],
+  movimientos: ['Movimientos', 'bi-arrow-left-right'],
+  trazabilidad: ['Trazabilidad', 'bi-upc-scan'],
+  administracion: ['Administración', 'bi-people'],
+};
+const TITULOS = { dashboard: 'Dashboard', existencias: 'Existencias', recepcion: 'Recepción de materia prima', ordenes: 'Órdenes de trabajo',
+  movimientos: 'Movimientos', trazabilidad: 'Trazabilidad', administracion: 'Administración de usuarios' };
+const MOTIVOS_AUTO = ['Reordenamiento de cámara', 'Consolidación por variedad', 'Liberar espacio para recepción', 'Inspección SAG', 'Envío a pre-frío', 'Estiba en frigorífico', 'Despacho'];
+const TOLERANCIA_KG = 0.02;
+const TIPO_BIN = { MP: ['Bin MP', 'st-info'], CAL: ['Bin Calibrado', 'st-ok'], PT: ['Pallet PT', 'st-ok'], COM: ['Bin Comercial', 'st-warn'], DES: ['Bin Desecho', 'st-mute'] };
+const PALETA = ['#2f6b3f', '#b8323a', '#d98e04', '#2b5d94', '#7a4fa3', '#5f9e6e', '#c8664a', '#8a8f2a', '#4a8fa8', '#9a6b4b'];
+
+/* ---------------- utilidades ---------------- */
+const fmtN = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 1 });
+const num = (n, dec) => dec === undefined ? fmtN.format(Number(n || 0)) : Number(n || 0).toLocaleString('es-CL', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pad = (n) => String(n).padStart(2, '0');
+const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+const ahora = () => iso(new Date());
+const hoy = () => ahora().slice(0, 10);
+const fechaRel = (dias, h, m = 0) => { const d = new Date(); d.setDate(d.getDate() - dias); d.setHours(h, m, 0, 0); return iso(d); };
+const fF = (s) => s ? `${s.slice(8, 10)}/${s.slice(5, 7)}/${s.slice(0, 4)} ${s.slice(11, 16)}` : '—';
+const fC = (s) => s ? `${s.slice(8, 10)}/${s.slice(5, 7)} ${s.slice(11, 16)}` : '—';
+function badge(estado) {
+  const m = { 'En cámara': 'st-ok', 'Almacenado': 'st-ok', 'Aprobado': 'st-ok', 'Cerrada': 'st-ok', 'Activo': 'st-ok',
+    'Asignado OT': 'st-info', 'En proceso': 'st-info', 'En pre-frío': 'st-info', 'Planificada': 'st-info', 'Inspección SAG': 'st-info',
+    'Pendiente': 'st-warn', 'En patio': 'st-mute', 'Procesado': 'st-mute', 'Despachado': 'st-mute', 'Inactivo': 'st-mute', 'Rechazado': 'st-bad', 'Objetado': 'st-bad' };
+  return `<span class="badge st ${m[estado] || 'st-mute'}">${esc(estado)}</span>`;
+}
+const tipoBin = (t) => { const x = TIPO_BIN[t] || [t, 'st-mute']; return `<span class="badge st ${x[1]}">${x[0]}</span>`; };
+const linkT = (t) => puede('trazabilidad') ? `<a href="#trazabilidad/${encodeURIComponent(t)}" class="gt-tarja">${esc(t)}</a>` : `<span class="gt-tarja">${esc(t)}</span>`;
+const ok = (msg) => Swal.fire({ icon: 'success', title: msg, timer: 1600, showConfirmButton: false });
+const error = (msg) => Swal.fire({ icon: 'error', title: 'No se pudo completar', text: msg, confirmButtonColor: '#2f6b3f' });
+const confirmar = (titulo, texto, boton, peligro) => Swal.fire({ icon: 'question', title: titulo, html: texto || '', showCancelButton: true,
+  confirmButtonText: boton, cancelButtonText: 'Cancelar', confirmButtonColor: peligro ? '#b8323a' : '#2f6b3f' }).then(r => r.isConfirmed);
+const sum = (arr, f) => arr.reduce((a, x) => a + Number(f ? f(x) : x || 0), 0);
+const groupSum = (arr, kf, vf) => { const o = {}; arr.forEach(x => { const k = kf(x); o[k] = (o[k] || 0) + Number(vf(x) || 0); }); return o; };
+
+/* ---------------- "base de datos" ---------------- */
+let db = null;
+function guardar() { try { localStorage.setItem(DB_KEY, JSON.stringify(db)); } catch (e) { /* sin almacenamiento: funciona en memoria */ } }
+function cargar() {
+  try { const s = localStorage.getItem(DB_KEY); if (s) db = JSON.parse(s); } catch (e) { db = null; }
+  if (!db || !db.usuarios) { db = sembrar(); guardar(); }
+}
+function ins(tabla, obj) { db.ids[tabla] = (db.ids[tabla] || 0) + 1; obj.id = db.ids[tabla]; db[tabla].push(obj); return obj; }
+const ubic = (id) => db.ubicaciones.find(u => u.id === id);
+const ubicNom = (id) => (ubic(id) || {}).nombre || null;
+const ubicId = (nombre) => (db.ubicaciones.find(u => u.nombre === nombre) || {}).id;
+const binId = (id) => db.bins.find(b => b.id === id);
+const binTarja = (t) => db.bins.find(b => b.tarja === String(t || '').trim().toUpperCase());
+const prod = (id) => db.productores.find(p => p.id === id);
+const perfil = (id) => db.perfiles.find(p => p.id === id);
+function mov(binIdV, tipo, o, d, usr, motivo, estado = 'Aprobado', aprob = 'auto', fecha = null) {
+  return ins('movimientos', { bin_id: binIdV, fecha: fecha || ahora(), tipo, origen_id: o, destino_id: d, usuario: usr, motivo, estado, aprobado_por: aprob });
+}
+function siguienteTarja(tipo) {
+  const base = tipo === 'MP' ? 100000 : 200000;
+  const max = db.bins.filter(b => b.tipo === tipo).reduce((m, b) => Math.max(m, parseInt(b.tarja.split('-')[1], 10)), base);
+  return `${tipo}-${String(max + 1).padStart(6, '0')}`;
+}
+function nuevoBin(tipo, d) {
+  return ins('bins', { tarja: d.tarja || siguienteTarja(tipo), tipo, variedad: d.variedad, calibre: d.calibre || null, color: d.color || null, kg: d.kg,
+    productor_id: d.productor_id || null, guia: d.guia || null, ubicacion_id: d.ubicacion_id, estado: d.estado, plaga: d.plaga || null,
+    ot_origen_id: d.ot || null, fecha_creacion: d.fecha || ahora(), usuario: d.usuario });
+}
+
+function sembrar() {
+  db = { ids: {}, perfiles: [], permisos: [], usuarios: [], ubicaciones: [], productores: [], bins: [], ots: [], ot_bins: [], movimientos: [],
+    exist_pallets: EXIST_PALLETS.map((r, i) => ({ id: i + 1, frio: r[0], tipo_fruta: r[1], tipo: r[2], variedad: r[3], nota_venta: r[4], peso_neto: r[5],
+      envase: r[6], mercado: r[7], cajas_pallet: r[8], calibre: r[9], categoria: r[10], pallets: r[11] })),
+    exist_pt: EXIST_PT.map((r, i) => ({ id: i + 1, envase: r[0], categoria: r[1], calibre: r[2], cajas: r[3] })) };
+
+  // Perfiles y permisos (usuarios_frutitrack.xlsx, hoja Permisos)
+  const perfiles = [['Administrador', 'Gestión de usuarios, permisos y acceso total'], ['Jefe de Turno', 'Crea procesos y aprueba movimientos'],
+    ['Planificador', 'Crea órdenes de trabajo (OT) y asigna bins'], ['Recepcionista', 'Ingresa bins al sistema contra la guía de despacho'],
+    ['Gruero', 'Mueve bins y pallets entre ubicaciones'], ['Tarjador', 'Etiqueta las salidas del proceso'], ['Control de Calidad', 'Objeta bins con plagas y libera fruta']];
+  const P = {}; perfiles.forEach(p => { P[p[0]] = ins('perfiles', { nombre: p[0], descripcion: p[1] }).id; });
+  const matriz = {
+    dashboard: ['RW', 'RW', 'RW', 'RW', 'RW', 'RW', 'RW'], existencias: ['RW', 'RW', 'R', '', 'R', 'R', 'R'],
+    recepcion: ['RW', 'RW', 'R', 'RW', '', '', 'R'], ordenes: ['RW', 'RW', 'RW', '', '', 'R', ''],
+    movimientos: ['RW', 'RW', 'R', '', 'RW', '', ''], trazabilidad: ['RW', 'RW', 'RW', 'R', '', 'R', 'RW'], administracion: ['RW', '', '', '', '', '', ''] };
+  Object.entries(matriz).forEach(([mod, nv]) => nv.forEach((n, i) => { if (n) ins('permisos', { perfil_id: i + 1, modulo: mod, nivel: n }); }));
+
+  // Usuarios (usuarios_frutitrack.xlsx)
+  [['admin', 'admin123', 'Administrador', 'Administrador', 'Usuario de sistema. Acceso total.'], ['rdiaz', 'turno2026', 'Roberto Díaz', 'Jefe de Turno', 'Turno Mañana'],
+   ['afuentes', 'plan2026', 'Ana Fuentes', 'Planificador', 'Planificación temporada 2026'], ['cmendoza', 'recep2026', 'Carlos Mendoza', 'Recepcionista', 'Pórtico recepción'],
+   ['projas', 'grua2026', 'Pedro Rojas', 'Gruero', 'Grúa N°1 — Cámaras 1 y 2'], ['msilva', 'tarja2026', 'Marco Silva', 'Tarjador', 'Línea 1 y 2'],
+   ['itorres', 'cc2026', 'Isabel Torres', 'Control de Calidad', 'Laboratorio CC']
+  ].forEach(u => ins('usuarios', { usuario: u[0], clave: u[1], nombre: u[2], perfil_id: P[u[3]], estado: 'Activo', ultimo_acceso: null, notas: u[4], creado: ahora() }));
+
+  // Ubicaciones
+  const U = {};
+  [['Cámara 1', 'Cámara MP', 120], ['Cámara 2', 'Cámara MP', 120], ['Cámara 3', 'Cámara MP', 100], ['Cámara 4', 'Cámara MP', 100],
+   ['Cámara Calibrado', 'Cámara Calibrado', 150], ['Línea 1', 'Línea', 0], ['Línea 2', 'Línea', 0], ['Pre-frío 1', 'Pre-frío', 40], ['Pre-frío 2', 'Pre-frío', 40],
+   ['C.F. LUIS CRUZ', 'Frigorífico', 900], ['C.F. RETIRO', 'Frigorífico', 900], ['Patio Comercial', 'Patio', 200], ['Patio Desecho', 'Patio', 200],
+   ['Inspección SAG', 'Inspección', 30], ['Despachado', 'Despacho', 0]
+  ].forEach(u => { U[u[0]] = ins('ubicaciones', { nombre: u[0], tipo: u[1], capacidad: u[2] }).id; });
+
+  // Productores (ficticios)
+  const PR = [['Agrícola El Peumo', 'Huerto El Peumo', 'San Clemente'], ['Fundo Santa Rosa', 'Cuartel Norte', 'Pelarco'], ['Huerto Los Aromos', 'Los Aromos', 'Talca'],
+    ['Agrícola Maule Sur', 'Parcela 14', 'San Clemente'], ['Frutícola Las Vertientes', 'Las Vertientes', 'Molina']].map(p => ins('productores', { nombre: p[0], huerto: p[1], comuna: p[2] }).id);
+
+  // Operación de ejemplo, reproducible
+  let s = 2026;
+  const R = () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  const ri = (a, b) => a + Math.floor(R() * (b - a + 1));
+  const camarasMP = ['Cámara 1', 'Cámara 2', 'Cámara 3', 'Cámara 4'];
+  const binsMP = new Map();
+  let nGuia = 48210;
+  for (let d = 9; d >= 0; d--) {
+    const guias = ri(2, 3);
+    for (let g = 0; g < guias; g++) {
+      nGuia++;
+      const pr = PR[ri(0, PR.length - 1)], v = VARIEDADES[ri(0, VARIEDADES.length - 1)], cam = camarasMP[ri(0, 3)], n = ri(6, 12);
+      for (let b = 0; b < n; b++) {
+        const kg = ri(3600, 4300) / 10, fe = fechaRel(d, 7 + g * 3, b * 2);
+        const bin = nuevoBin('MP', { variedad: v, kg, productor_id: pr, guia: 'GD-' + nGuia, ubicacion_id: U[cam], estado: 'En cámara', fecha: fe, usuario: 'cmendoza' });
+        mov(bin.id, 'Recepción', null, U[cam], 'cmendoza', 'Ingreso contra guía GD-' + nGuia, 'Aprobado', null, fe);
+        binsMP.set(bin.id, { variedad: v, kg, cam, dia: d });
+      }
+    }
+  }
+  // Objeciones de Control de Calidad
+  const plagas = ['Pulgón lanígero', 'Arañita roja', 'Chanchito blanco', 'Pulgón lanígero'];
+  const ids = [...binsMP.keys()], objetados = new Set();
+  [7, 23, 61, 118].forEach((pos, k) => {
+    const id = ids[pos]; if (!id) return;
+    const b = binId(id); b.estado = 'Objetado'; b.plaga = plagas[k];
+    mov(id, 'Objeción', null, null, 'itorres', 'Plaga: ' + plagas[k], 'Aprobado', null, fechaRel(binsMP.get(id).dia, 15, 10 + k));
+    objetados.add(id);
+  });
+  // Movimientos entre cámaras (algunos pendientes de aprobación)
+  const motivos = ['Reordenamiento de cámara', 'Consolidación por variedad', 'Liberar espacio para recepción'];
+  let k = 0;
+  for (const [id, b] of binsMP) {
+    if (objetados.has(id) || ri(1, 100) > 12) continue;
+    let dest = camarasMP[(k + 1) % 4]; if (dest === b.cam) dest = camarasMP[(k + 2) % 4];
+    const pend = k % 6 === 5;
+    mov(id, 'Movimiento', U[b.cam], U[dest], 'projas', pend ? 'Otro: solicitud de bodega externa' : motivos[k % 3], pend ? 'Pendiente' : 'Aprobado', pend ? null : 'auto',
+      fechaRel(Math.max(0, b.dia - 1), 11, (k * 7) % 60));
+    if (!pend) { binId(id).ubicacion_id = U[dest]; b.cam = dest; }
+    k++;
+  }
+  // Órdenes de trabajo
+  const usados = new Set();
+  const plan = [['Cerrada', 6, 'Línea 1', 14], ['Cerrada', 4, 'Línea 2', 12], ['Cerrada', 2, 'Línea 1', 16], ['En proceso', 0, 'Línea 2', 10], ['Planificada', 0, 'Línea 1', 8]];
+  let nOT = 0;
+  for (const [estado, dia, linea, n] of plan) {
+    const porVar = {};
+    for (const [id, b] of binsMP) { if (usados.has(id) || objetados.has(id) || b.dia <= dia) continue; (porVar[b.variedad] = porVar[b.variedad] || []).push(id); }
+    const v = Object.keys(porVar).sort((a, b) => porVar[b].length - porVar[a].length)[0];
+    if (!v) continue;
+    const sel = porVar[v].slice(0, n);
+    sel.forEach(id => usados.add(id));
+    const kgIn = Math.round(sum(sel, id => binsMP.get(id).kg) * 10) / 10;
+    nOT++;
+    const num = `OT-2026-${String(310 + nOT).padStart(4, '0')}`;
+    const ot = ins('ots', { numero: num, fecha: fechaRel(dia, 7, 30), variedad: v, linea_id: U[linea], vuelta: 1, estado, kg_entrada: kgIn, kg_salida: 0, creado_por: 'afuentes', cerrado_en: null, observacion: null });
+    sel.forEach(id => ins('ot_bins', { ot_id: ot.id, bin_id: id }));
+    if (estado === 'Planificada') { sel.forEach(id => { binId(id).estado = 'Asignado OT'; }); continue; }
+    sel.forEach((id, i) => {
+      mov(id, 'Abastecimiento', U[binsMP.get(id).cam], U[linea], 'projas', 'Abastecimiento ' + num, 'Aprobado', 'auto', fechaRel(dia, 8, i * 3));
+      const b = binId(id); b.ubicacion_id = U[linea]; b.estado = estado === 'Cerrada' ? 'Procesado' : 'En proceso';
+    });
+    if (estado !== 'Cerrada') continue;
+    const r1 = (x) => Math.round(x * 10) / 10;
+    const kgPT = r1(kgIn * .62), kgCAL = r1(kgIn * .20), kgCOM = r1(kgIn * .12), kgDES = r1(kgIn - kgPT - kgCAL - kgCOM - kgIn * .004);
+    const salidas = [];
+    const nPal = Math.max(1, Math.round(kgPT / 900));
+    for (let i = 0; i < nPal; i++) { const dest = dia >= 4 ? 'C.F. LUIS CRUZ' : 'Pre-frío 1'; salidas.push(['PT', r1(kgPT / nPal), CALIBRES[i % 7], dest, dest === 'Pre-frío 1' ? 'En pre-frío' : 'Almacenado']); }
+    const nCal = Math.max(1, Math.round(kgCAL / 380)); for (let i = 0; i < nCal; i++) salidas.push(['CAL', r1(kgCAL / nCal), CALIBRES[(i + 2) % 7], 'Cámara Calibrado', 'En cámara']);
+    const nCom = Math.max(1, Math.round(kgCOM / 380)); for (let i = 0; i < nCom; i++) salidas.push(['COM', r1(kgCOM / nCom), '—', 'Patio Comercial', 'En patio']);
+    salidas.push(['DES', kgDES, null, 'Patio Desecho', 'En patio']);
+    let kgOut = 0;
+    salidas.forEach((x, i) => {
+      const fe = fechaRel(dia, 16, i * 2);
+      const b = nuevoBin(x[0], { variedad: v, calibre: x[2], color: x[0] === 'DES' ? null : COLORES[v], kg: x[1], ubicacion_id: U[x[3]], estado: x[4], ot: ot.id, fecha: fe, usuario: 'msilva' });
+      mov(b.id, 'Tarjado', U[linea], U[x[3]], 'msilva', 'Salida de ' + num, 'Aprobado', 'auto', fe);
+      kgOut += x[1];
+    });
+    ot.kg_salida = r1(kgOut); ot.cerrado_en = fechaRel(dia, 17, 0); ot.observacion = 'Cuadratura OK';
+  }
+  // Pallets a inspección SAG
+  db.bins.filter(b => b.tipo === 'PT').slice(0, 2).forEach((p, i) => {
+    mov(p.id, 'Movimiento', p.ubicacion_id, U['Inspección SAG'], 'projas', 'Inspección SAG', 'Aprobado', 'auto', fechaRel(1, 10, i * 5));
+    p.ubicacion_id = U['Inspección SAG']; p.estado = 'Inspección SAG';
+  });
+  return db;
+}
+
+/* ---------------- sesión y permisos ---------------- */
+let yo = null;
+function sesion() {
+  let id = null; try { id = Number(sessionStorage.getItem(SES_KEY)); } catch (e) { id = window.__gtSes || null; }
+  const u = db.usuarios.find(x => x.id === id && x.estado === 'Activo');
+  yo = u ? { ...u, perfil: perfil(u.perfil_id).nombre } : null;
+  return yo;
+}
+function setSesion(id) { window.__gtSes = id; try { id ? sessionStorage.setItem(SES_KEY, id) : sessionStorage.removeItem(SES_KEY); } catch (e) { } }
+function nivel(mod) { if (!yo) return ''; const p = db.permisos.find(x => x.perfil_id === yo.perfil_id && x.modulo === mod); return p ? p.nivel : ''; }
+const puede = (mod, n = 'R') => { const v = nivel(mod); return v !== '' && (n === 'R' || v === 'RW'); };
+/** Ejecuta una acción validando el permiso, como lo haría el servidor */
+function accion(mod, n, fn) {
+  if (!sesion()) { mostrarLogin(); return { ok: false, msg: 'Sesión expirada' }; }
+  if (!puede(mod, n)) return { ok: false, msg: 'Tu perfil no tiene permiso para esta acción' };
+  try { const r = fn(); if (r && r.ok) guardar(); return r; } catch (e) { cargar(); return { ok: false, msg: 'Error: ' + e.message }; }
+}
+
+/* ---------------- DataTables y Chart.js ---------------- */
+$.fn.dataTable.Buttons.defaults.dom.button.className = 'btn';
+$.extend(true, $.fn.dataTable.defaults, {
+  language: { decimal: ',', thousands: '.', emptyTable: 'Sin registros', info: 'Mostrando _START_ a _END_ de _TOTAL_', infoEmpty: 'Mostrando 0 a 0 de 0',
+    infoFiltered: '(filtrado de _MAX_)', lengthMenu: 'Mostrar _MENU_', search: 'Buscar:', zeroRecords: 'No se encontraron coincidencias',
+    paginate: { first: '«', last: '»', next: '›', previous: '‹' } },
+  pageLength: 15, lengthMenu: [5, 10, 15, 25, 50, 100],
+  dom: "<'row align-items-center mb-2'<'col-md-6'B><'col-md-6'f>><'row'<'col-12'tr>><'row align-items-center mt-2'<'col-md-5'i><'col-md-7'p>>",
+  buttons: [
+    { extend: 'excelHtml5', text: '<i class="bi bi-file-earmark-excel"></i> Excel', className: 'btn-sm btn-outline-success', exportOptions: { columns: ':not(.no-export)' } },
+    { extend: 'pdfHtml5', text: '<i class="bi bi-file-earmark-pdf"></i> PDF', className: 'btn-sm btn-outline-danger', orientation: 'landscape', exportOptions: { columns: ':not(.no-export)' } },
+    { extend: 'csvHtml5', text: '<i class="bi bi-filetype-csv"></i> CSV', className: 'btn-sm btn-outline-secondary', exportOptions: { columns: ':not(.no-export)' } }
+  ]
+});
+Chart.defaults.font.family = 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif';
+Chart.defaults.font.size = 12; Chart.defaults.color = '#4b5563'; Chart.defaults.plugins.legend.labels.boxWidth = 12; Chart.defaults.maintainAspectRatio = false;
+let graficos = [];
+function grafico(id, tipo, labels, datasets, opts = {}) {
+  const el = document.getElementById(id); if (!el) return;
+  graficos.push(new Chart(el, { type: tipo, data: { labels, datasets }, options: Object.assign({
+    responsive: true,
+    plugins: { legend: { display: datasets.length > 1 || tipo === 'doughnut', position: tipo === 'doughnut' ? 'right' : 'top' },
+      tooltip: { callbacks: { label: (c) => ' ' + (c.dataset.label ? c.dataset.label + ': ' : (c.label ? c.label + ': ' : '')) + num(c.parsed.y ?? c.parsed.x ?? c.parsed) } } },
+    scales: tipo === 'doughnut' ? {} : { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: '#eef1ed' } } }
+  }, opts) }));
+}
+
+/* ---------------- navegación ---------------- */
+const $main = () => document.getElementById('gtMain');
+function limpiarModales() {
+  document.querySelectorAll('.modal.show').forEach(m => bootstrap.Modal.getInstance(m)?.hide());
+  document.querySelectorAll('.modal-backdrop').forEach(x => x.remove());
+  document.body.classList.remove('modal-open'); document.body.style.removeProperty('overflow'); document.body.style.removeProperty('padding-right');
+}
+function mostrarLogin(msg) {
+  limpiarModales();
+  document.getElementById('vistaApp').hidden = true;
+  document.getElementById('vistaLogin').hidden = false;
+  const e = document.getElementById('loginError'); e.hidden = !msg; e.textContent = msg || '';
+  const claves = { admin: 'admin123', rdiaz: 'turno2026', afuentes: 'plan2026', cmendoza: 'recep2026', projas: 'grua2026', msilva: 'tarja2026', itorres: 'cc2026' };
+  document.getElementById('loginDemo').innerHTML = db.usuarios.filter(u => u.estado === 'Activo' && claves[u.usuario])
+    .map(u => `<button type="button" class="btn btn-outline-secondary btn-sm" data-u="${esc(u.usuario)}" data-c="${esc(claves[u.usuario])}">${esc(perfil(u.perfil_id).nombre)}</button>`).join('');
+  document.getElementById('lgUsuario').focus();
+}
+function irA() {
+  if (!sesion()) return mostrarLogin();
+  document.getElementById('vistaLogin').hidden = true;
+  document.getElementById('vistaApp').hidden = false;
+  let [mod, param] = (location.hash.slice(1) || 'dashboard').split('/');
+  if (!MODULOS[mod]) mod = 'dashboard';
+  // menú
+  document.getElementById('gtNav').innerHTML = Object.entries(MODULOS).filter(([k]) => puede(k)).map(([k, m]) =>
+    `<a href="#${k}" class="gt-nav-link ${k === mod ? 'active' : ''}"><i class="bi ${m[1]}"></i><span>${m[0]}</span>${!puede(k, 'RW') ? '<i class="bi bi-eye gt-ro" title="Solo lectura"></i>' : ''}</a>`).join('');
+  document.getElementById('gtNombre').textContent = yo.nombre;
+  document.getElementById('gtPerfil').textContent = yo.perfil;
+  document.getElementById('gtTitulo').textContent = TITULOS[mod];
+  document.getElementById('gtSidebar').classList.remove('open');
+  graficos.forEach(g => g.destroy()); graficos = [];
+  limpiarModales();
+  if (!puede(mod)) {
+    $main().innerHTML = `<div class="alert alert-warning mt-2"><i class="bi bi-shield-lock me-2"></i>Tu perfil (<b>${esc(yo.perfil)}</b>) no tiene acceso a este módulo.</div>`;
+    return;
+  }
+  VISTAS[mod](param ? decodeURIComponent(param) : null);
+  window.scrollTo(0, 0);
+}
+function recargar() { irA(); }
+
+/* =====================================================================
+   VISTAS
+   ===================================================================== */
+const VISTAS = {};
+
+/* ---------- DASHBOARD ---------- */
+VISTAS.dashboard = function () {
+  const P = db.exist_pallets, B = db.bins;
+  const palletsFrio = sum(P, r => r.pallets), cajasPT = sum(db.exist_pt, r => r.cajas);
+  const enCam = B.filter(b => b.tipo === 'MP' && ['En cámara', 'Asignado OT'].includes(b.estado));
+  const kgHoy = sum(B.filter(b => b.tipo === 'MP' && b.fecha_creacion.startsWith(hoy())), b => b.kg);
+  const otsAct = db.ots.filter(o => ['Planificada', 'En proceso'].includes(o.estado)).sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const objetados = B.filter(b => b.estado === 'Objetado').length;
+  const pendientes = db.movimientos.filter(m => m.estado === 'Pendiente').length;
+  const kpi = (ic, cls, val, lbl, href) => { const c = `<div class="gt-card gt-kpi"><div class="ic ${cls}"><i class="bi ${ic}"></i></div><div><div class="val">${val}</div><div class="lbl">${lbl}</div></div></div>`;
+    return href && puede(href) ? `<a class="gt-kpi-link" href="#${href}">${c}</a>` : c; };
+  const ult = [...db.movimientos].sort((a, b) => b.fecha.localeCompare(a.fecha) || b.id - a.id).slice(0, 8);
+
+  $main().innerHTML = `
+  <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
+    <div class="text-muted small"><i class="bi bi-calendar3 me-1"></i>${fF(ahora())} · Hola, <b>${esc(yo.nombre)}</b></div>
+    <div class="small text-muted">Existencias según informe del <b>28/05/2024</b> · Operación: <span class="gt-demo-tag">datos de ejemplo</span></div>
+  </div>
+  <div class="row g-3 mb-3">
+    <div class="col-6 col-xl-3">${kpi('bi-boxes', 'ic-verde', num(palletsFrio, 1), 'Pallets en frigorífico', 'existencias')}</div>
+    <div class="col-6 col-xl-3">${kpi('bi-box2', 'ic-azul', num(cajasPT, 0), 'Cajas producto terminado', 'existencias')}</div>
+    <div class="col-6 col-xl-3">${kpi('bi-inboxes', 'ic-ambar', enCam.length, `Bins MP en cámara · ${num(sum(enCam, b => b.kg) / 1000, 1)} t`, 'recepcion')}</div>
+    <div class="col-6 col-xl-3">${kpi('bi-truck', 'ic-verde', num(kgHoy, 0), 'Kg recepcionados hoy', 'recepcion')}</div>
+    <div class="col-6 col-xl-4">${kpi('bi-clipboard-check', 'ic-azul', otsAct.length, 'OTs activas (planificadas / en proceso)', 'ordenes')}</div>
+    <div class="col-6 col-xl-4">${kpi('bi-bug', 'ic-rojo', objetados, 'Bins objetados por plaga', 'trazabilidad')}</div>
+    <div class="col-12 col-xl-4">${kpi('bi-hourglass-split', 'ic-ambar', pendientes, 'Movimientos pendientes de aprobación', 'movimientos')}</div>
+  </div>
+  <div class="row g-3 mb-3">
+    <div class="col-lg-8"><div class="gt-card"><h6>Pallets en frigorífico por variedad</h6><div class="gt-chart"><canvas id="chVariedad"></canvas></div></div></div>
+    <div class="col-lg-4"><div class="gt-card"><h6>Pallets por categoría</h6><div class="gt-chart"><canvas id="chCategoria"></canvas></div></div></div>
+  </div>
+  <div class="row g-3 mb-3">
+    <div class="col-lg-4"><div class="gt-card"><h6>Pallets por mercado</h6><div class="gt-chart sm"><canvas id="chMercado"></canvas></div></div></div>
+    <div class="col-lg-4"><div class="gt-card"><h6>Cajas PT por calibre</h6><div class="gt-chart sm"><canvas id="chCalibre"></canvas></div></div></div>
+    <div class="col-lg-4"><div class="gt-card"><h6>Pallets por frigorífico</h6><div class="gt-chart sm"><canvas id="chFrio"></canvas></div></div></div>
+  </div>
+  <div class="row g-3 mb-3">
+    <div class="col-lg-7"><div class="gt-card"><h6>Recepción de materia prima · últimos 10 días</h6><div class="gt-chart"><canvas id="chRecepcion"></canvas></div></div></div>
+    <div class="col-lg-5"><div class="gt-card"><h6>Ocupación de cámaras (bins)</h6><div class="gt-chart"><canvas id="chOcupacion"></canvas></div></div></div>
+  </div>
+  <div class="row g-3">
+    <div class="col-lg-7"><div class="gt-card"><h6>Últimos movimientos</h6><div class="table-responsive"><table class="table table-sm align-middle mb-0">
+      <thead><tr><th>Fecha</th><th>Tarja</th><th>Tipo</th><th>Origen → Destino</th><th>Usuario</th><th>Estado</th></tr></thead><tbody>
+      ${ult.map(m => { const b = binId(m.bin_id); return `<tr><td class="small text-nowrap">${fC(m.fecha)}</td><td>${linkT(b.tarja)}</td><td class="small">${esc(m.tipo)}</td>
+        <td class="small">${m.origen_id || m.destino_id ? esc(ubicNom(m.origen_id) || '—') + ' → ' + esc(ubicNom(m.destino_id) || '—') : esc(m.motivo)}</td><td class="small">${esc(m.usuario)}</td><td>${badge(m.estado)}</td></tr>`; }).join('')}
+      </tbody></table></div></div></div>
+    <div class="col-lg-5"><div class="gt-card"><h6>Órdenes de trabajo activas</h6>
+      ${otsAct.length ? otsAct.map(o => `<div class="d-flex align-items-center justify-content-between border-bottom py-2"><div>
+        <div class="fw-semibold">${esc(o.numero)} <span class="text-muted fw-normal small">· ${esc(ubicNom(o.linea_id))}</span></div>
+        <div class="small text-muted">${esc(o.variedad)} · ${db.ot_bins.filter(x => x.ot_id === o.id).length} bins · ${num(o.kg_entrada, 0)} kg</div></div>
+        <span class="badge st ${o.estado === 'En proceso' ? 'st-info' : 'st-warn'}">${esc(o.estado)}</span></div>`).join('') : '<div class="text-muted small">Sin OTs activas.</div>'}
+    </div></div>
+  </div>`;
+
+  const C = PALETA;
+  const porVar = {}; P.forEach(r => { porVar[r.variedad] = porVar[r.variedad] || { EXPORTACION: 0, NACIONAL: 0 }; porVar[r.variedad][r.tipo_fruta] += r.pallets; });
+  const vars = Object.keys(porVar).sort((a, b) => (porVar[b].EXPORTACION + porVar[b].NACIONAL) - (porVar[a].EXPORTACION + porVar[a].NACIONAL));
+  grafico('chVariedad', 'bar', vars, [
+    { label: 'Exportación', data: vars.map(v => +porVar[v].EXPORTACION.toFixed(1)), backgroundColor: C[0], borderRadius: 4 },
+    { label: 'Nacional', data: vars.map(v => +porVar[v].NACIONAL.toFixed(1)), backgroundColor: C[2], borderRadius: 4 }
+  ], { scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true, grid: { color: '#eef1ed' } } } });
+  const porCat = groupSum(P, r => r.categoria, r => r.pallets), cats = Object.keys(porCat).sort((a, b) => porCat[b] - porCat[a]);
+  grafico('chCategoria', 'doughnut', cats, [{ data: cats.map(c => +porCat[c].toFixed(1)), backgroundColor: C, borderWidth: 1 }], { cutout: '58%' });
+  const porM = groupSum(P, r => r.mercado, r => r.pallets), merc = Object.keys(porM).sort((a, b) => porM[b] - porM[a]);
+  grafico('chMercado', 'bar', merc, [{ label: 'Pallets', data: merc.map(m => +porM[m].toFixed(1)), backgroundColor: C[3], borderRadius: 4 }],
+    { indexAxis: 'y', scales: { x: { beginAtZero: true, grid: { color: '#eef1ed' } }, y: { grid: { display: false } } } });
+  const porCal = groupSum(db.exist_pt, r => r.calibre, r => r.cajas), cal = Object.keys(porCal).sort();
+  grafico('chCalibre', 'bar', cal, [{ label: 'Cajas', data: cal.map(c => porCal[c]), backgroundColor: C[1], borderRadius: 4 }]);
+  const porF = groupSum(P, r => r.frio, r => r.pallets), fr = Object.keys(porF).sort();
+  grafico('chFrio', 'doughnut', fr, [{ data: fr.map(f => +porF[f].toFixed(1)), backgroundColor: [C[0], C[5]], borderWidth: 1 }], { cutout: '58%' });
+  const labels = [], kgs = [], nb = [];
+  for (let i = 9; i >= 0; i--) { const d = fechaRel(i, 0).slice(0, 10); const bs = B.filter(b => b.tipo === 'MP' && b.fecha_creacion.startsWith(d));
+    labels.push(d.slice(8, 10) + '/' + d.slice(5, 7)); kgs.push(Math.round(sum(bs, b => b.kg))); nb.push(bs.length); }
+  grafico('chRecepcion', 'bar', labels, [
+    { type: 'bar', label: 'Kg recepcionados', data: kgs, backgroundColor: C[0] + 'cc', borderRadius: 4, yAxisID: 'y' },
+    { type: 'line', label: 'Bins', data: nb, borderColor: C[1], backgroundColor: C[1], tension: .3, yAxisID: 'y1' }
+  ], { scales: { x: { grid: { display: false } }, y: { beginAtZero: true, position: 'left', grid: { color: '#eef1ed' }, title: { display: true, text: 'kg' } },
+    y1: { beginAtZero: true, position: 'right', grid: { display: false }, title: { display: true, text: 'bins' } } } });
+  const cams = db.ubicaciones.filter(u => ['Cámara MP', 'Cámara Calibrado'].includes(u.tipo));
+  grafico('chOcupacion', 'bar', cams.map(c => c.nombre), [
+    { label: 'Bins', data: cams.map(c => B.filter(b => b.ubicacion_id === c.id && ['En cámara', 'Asignado OT', 'Objetado'].includes(b.estado)).length), backgroundColor: C[0], borderRadius: 4 },
+    { label: 'Capacidad', data: cams.map(c => c.capacidad), backgroundColor: '#dfe5dd', borderRadius: 4 }
+  ], { indexAxis: 'y', scales: { x: { beginAtZero: true, grid: { color: '#eef1ed' } }, y: { grid: { display: false } } } });
+};
+
+/* ---------- EXISTENCIAS ---------- */
+VISTAS.existencias = function () {
+  const P = db.exist_pallets, PT = db.exist_pt;
+  const tot = sum(P, r => r.pallets), expo = sum(P.filter(r => r.tipo_fruta === 'EXPORTACION'), r => r.pallets), cajas = sum(PT, r => r.cajas);
+  const calibres = [...new Set(PT.map(r => r.calibre))].sort();
+  const piv = {}; PT.forEach(r => { const k = r.envase + '|' + r.categoria; piv[k] = piv[k] || {}; piv[k][r.calibre] = (piv[k][r.calibre] || 0) + r.cajas; });
+  const totCol = {};
+  $main().innerHTML = `
+  <div class="row g-3 mb-3">
+    ${[['bi-boxes', 'ic-verde', num(tot, 1), 'Pallets totales (incl. bins)'], ['bi-globe-americas', 'ic-azul', num(expo, 1), 'Exportación'],
+       ['bi-flag', 'ic-ambar', num(tot - expo, 1), 'Nacional'], ['bi-box2', 'ic-rojo', num(cajas, 0), 'Cajas PT']].map(k =>
+      `<div class="col-6 col-lg-3"><div class="gt-card gt-kpi"><div class="ic ${k[1]}"><i class="bi ${k[0]}"></i></div><div><div class="val">${k[2]}</div><div class="lbl">${k[3]}</div></div></div></div>`).join('')}
+  </div>
+  <ul class="nav nav-tabs">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabPallets"><i class="bi bi-boxes me-1"></i>Pallets en frigorífico</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabPT"><i class="bi bi-grid-3x3 me-1"></i>Cajas PT por calibre</button></li>
+  </ul>
+  <div class="tab-content gt-card rounded-top-0 border-top-0">
+    <div class="tab-pane fade show active" id="tabPallets">
+      <div class="small text-muted mb-2">Fuente: <b>Existencia Manzanas.pdf</b> — Detalle Existencia Pallet, especie MANZANA, 28/05/2024.</div>
+      <div class="row g-2 mb-2" id="filtros">
+        ${[[0, 'Frigorífico: todos'], [1, 'Tipo fruta: todos'], [3, 'Variedad: todas'], [7, 'Mercado: todos']].map(f =>
+          `<div class="col-6 col-md-3"><select class="form-select form-select-sm" data-col="${f[0]}" id="flt${f[0]}"><option value="">${f[1]}</option></select></div>`).join('')}
+      </div>
+      <table id="tblPallets" class="table table-sm table-striped table-hover w-100 nowrap">
+        <thead><tr><th>Frigorífico</th><th>Tipo fruta</th><th>Tipo</th><th>Variedad</th><th>Nota venta</th><th class="num">P. neto</th><th>Envase</th><th>Mercado</th><th class="num">Cajas/pallet</th><th>Calibre</th><th>Categoría</th><th class="num">Pallets</th></tr></thead>
+        <tbody>${P.map(r => `<tr><td>${esc(r.frio)}</td><td>${esc(r.tipo_fruta)}</td><td>${esc(r.tipo)}</td><td>${esc(r.variedad)}</td><td>${esc(r.nota_venta)}</td>
+          <td class="num">${num(r.peso_neto, 2)}</td><td>${esc(r.envase)}</td><td>${esc(r.mercado)}</td><td class="num">${r.cajas_pallet}</td><td>${esc(r.calibre)}</td>
+          <td>${esc(r.categoria)}</td><td class="num" data-order="${r.pallets}">${num(r.pallets, 1)}</td></tr>`).join('')}</tbody>
+        <tfoot><tr><th colspan="11" class="text-end">Total filtrado</th><th class="num" id="totPallets"></th></tr></tfoot>
+      </table>
+    </div>
+    <div class="tab-pane fade" id="tabPT">
+      <div class="small text-muted mb-2">Fuente: <b>Existencia PT.xlsx</b> — Informe de existencia (con detalle mixtos), cajas por envase, categoría y calibre.</div>
+      <table id="tblPT" class="table table-sm table-bordered table-hover w-100">
+        <thead><tr><th>Envase</th><th>Categoría</th>${calibres.map(c => `<th class="num">${c}</th>`).join('')}<th class="num">Total</th></tr></thead>
+        <tbody>${Object.entries(piv).map(([k, f]) => { const [env, cat] = k.split('|'); let tf = 0;
+          return `<tr><td class="fw-semibold">${esc(env)}</td><td>${esc(cat)}</td>${calibres.map(c => { const v = f[c] || 0; tf += v; totCol[c] = (totCol[c] || 0) + v; return `<td class="num">${v ? num(v, 0) : ''}</td>`; }).join('')}<td class="num fw-semibold">${num(tf, 0)}</td></tr>`; }).join('')}</tbody>
+        <tfoot><tr><th colspan="2">Total general</th>${calibres.map(c => `<th class="num">${num(totCol[c], 0)}</th>`).join('')}<th class="num">${num(cajas, 0)}</th></tr></tfoot>
+      </table>
+    </div>
+  </div>`;
+  const t = $('#tblPallets').DataTable({ order: [[0, 'asc'], [3, 'asc']], scrollX: true,
+    footerCallback: function () { const v = this.api().column(11, { search: 'applied' }).nodes().toArray().reduce((a, n) => a + Number(n.dataset.order), 0); $('#totPallets').text(num(v, 1)); } });
+  $('#filtros select').each(function () {
+    const sel = $(this), col = +sel.data('col');
+    [...new Set(P.map(r => [r.frio, r.tipo_fruta, null, r.variedad, null, null, null, r.mercado][col]))].sort().forEach(v => sel.append($('<option>').val(v).text(v)));
+    sel.on('change', function () { const v = $.fn.dataTable.util.escapeRegex(this.value); t.column(col).search(v ? '^' + v + '$' : '', true, false).draw(); });
+  });
+  $('#tblPT').DataTable({ paging: false, ordering: false, info: false });
+};
+
+/* ---------- RECEPCIÓN ---------- */
+VISTAS.recepcion = function () {
+  const rw = puede('recepcion', 'RW');
+  const bins = db.bins.filter(b => b.tipo === 'MP');
+  const guias = {}; bins.forEach(b => { const k = b.guia + '|' + b.variedad; if (!guias[k]) guias[k] = { guia: b.guia, fecha: b.fecha_creacion, prod: b.productor_id, variedad: b.variedad, n: 0, kg: 0 };
+    const g = guias[k]; g.n++; g.kg += b.kg; if (b.fecha_creacion < g.fecha) g.fecha = b.fecha_creacion; });
+  $main().innerHTML = `<div class="row g-3">
+    ${rw ? `<div class="col-xl-4"><div class="gt-card"><h6><i class="bi bi-plus-circle me-1"></i>Ingresar bins contra guía</h6>
+      <form id="frmRec" autocomplete="off">
+        <div class="mb-2"><label class="form-label small mb-1" for="rcGuia">N° guía de despacho</label><input class="form-control" id="rcGuia" placeholder="GD-48250" required></div>
+        <div class="mb-2"><label class="form-label small mb-1" for="rcProd">Productor / huerto</label><select class="form-select" id="rcProd" required><option value="">Seleccionar…</option>
+          ${db.productores.map(p => `<option value="${p.id}">${esc(p.nombre)} — ${esc(p.huerto)}</option>`).join('')}</select></div>
+        <div class="row g-2 mb-2">
+          <div class="col-7"><label class="form-label small mb-1" for="rcVar">Variedad</label><select class="form-select" id="rcVar" required><option value="">Seleccionar…</option>${VARIEDADES.map(v => `<option>${v}</option>`).join('')}</select></div>
+          <div class="col-5"><label class="form-label small mb-1" for="rcCam">Cámara</label><select class="form-select" id="rcCam">${db.ubicaciones.filter(u => u.tipo === 'Cámara MP').map(u => `<option value="${u.id}">${esc(u.nombre)}</option>`).join('')}</select></div>
+        </div>
+        <label class="form-label small mb-1 mt-1">Bins <span class="text-muted">(escanea la tarja o déjala vacía para autogenerar)</span></label>
+        <div id="filasBins"></div>
+        <div class="d-flex justify-content-between align-items-center mt-2">
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="btnAgregar"><i class="bi bi-plus"></i> Agregar bin</button>
+          <div class="small">Total: <b id="totBins">0</b> bins · <b id="totKg">0</b> kg</div>
+        </div>
+        <button class="btn btn-gt w-100 mt-3"><i class="bi bi-check2-circle me-1"></i>Registrar recepción</button>
+      </form></div></div>` : ''}
+    <div class="${rw ? 'col-xl-8' : 'col-12'}">
+      <div class="gt-card mb-3"><h6>Guías recepcionadas</h6>
+        <table id="tblGuias" class="table table-sm table-hover w-100"><thead><tr><th>Guía</th><th>Fecha</th><th>Productor</th><th>Variedad</th><th class="num">Bins</th><th class="num">Kg</th></tr></thead><tbody>
+        ${Object.values(guias).map(g => `<tr><td class="gt-tarja">${esc(g.guia)}</td><td data-order="${g.fecha}">${fF(g.fecha)}</td><td>${esc(prod(g.prod)?.nombre)}</td><td>${esc(g.variedad)}</td><td class="num">${g.n}</td><td class="num" data-order="${g.kg}">${num(g.kg, 0)}</td></tr>`).join('')}
+        </tbody></table></div>
+      <div class="gt-card"><h6>Bins de materia prima</h6>
+        <table id="tblBins" class="table table-sm table-striped table-hover w-100"><thead><tr><th>Tarja</th><th>Guía</th><th>Productor</th><th>Variedad</th><th class="num">Kg</th><th>Ubicación</th><th>Estado</th><th>Recepción</th><th>Usuario</th></tr></thead><tbody>
+        ${bins.map(b => `<tr><td>${linkT(b.tarja)}</td><td>${esc(b.guia)}</td><td>${esc(prod(b.productor_id)?.nombre)}</td><td>${esc(b.variedad)}</td>
+          <td class="num" data-order="${b.kg}">${num(b.kg, 1)}</td><td>${esc(ubicNom(b.ubicacion_id))}</td><td>${badge(b.estado)}${b.plaga ? ` <span class="small text-danger">${esc(b.plaga)}</span>` : ''}</td>
+          <td class="small" data-order="${b.fecha_creacion}">${fF(b.fecha_creacion)}</td><td class="small">${esc(b.usuario)}</td></tr>`).join('')}
+        </tbody></table></div>
+    </div></div>`;
+  $('#tblGuias').DataTable({ order: [[1, 'desc']], pageLength: 5 });
+  $('#tblBins').DataTable({ order: [[7, 'desc']] });
+  if (!rw) return;
+  const cont = document.getElementById('filasBins');
+  const totales = () => { const k = [...cont.querySelectorAll('.kg')].map(i => parseFloat(i.value) || 0);
+    document.getElementById('totBins').textContent = k.filter(x => x > 0).length; document.getElementById('totKg').textContent = num(sum(k)); };
+  const fila = () => {
+    const d = document.createElement('div'); d.className = 'input-group input-group-sm mb-1 fila-bin';
+    d.innerHTML = '<span class="input-group-text"><i class="bi bi-upc-scan"></i></span><input class="form-control gt-tarja tj" placeholder="Tarja (auto)" aria-label="Tarja">' +
+      '<input class="form-control num kg" type="number" step="0.1" min="1" placeholder="kg" style="max-width:95px" aria-label="Kg"><button type="button" class="btn btn-outline-secondary" title="Quitar"><i class="bi bi-x"></i></button>';
+    cont.appendChild(d);
+    d.querySelector('.tj').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); d.querySelector('.kg').focus(); } });
+    d.querySelector('.kg').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); fila(); cont.lastChild.querySelector('.tj').focus(); } });
+    d.querySelector('.kg').addEventListener('input', totales);
+    d.querySelector('button').onclick = () => { if (cont.children.length > 1) { d.remove(); totales(); } };
+    totales();
+  };
+  [1, 2, 3].forEach(fila);
+  document.getElementById('btnAgregar').onclick = fila;
+  document.getElementById('frmRec').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const filas = [...cont.querySelectorAll('.fila-bin')].filter(r => parseFloat(r.querySelector('.kg').value) > 0);
+    const guia = document.getElementById('rcGuia').value.trim().toUpperCase(), prodId = +document.getElementById('rcProd').value,
+      variedad = document.getElementById('rcVar').value, cam = +document.getElementById('rcCam').value;
+    const kgs = filas.map(r => parseFloat(r.querySelector('.kg').value)), tjs = filas.map(r => r.querySelector('.tj').value.trim().toUpperCase());
+    if (!guia || !prodId || !variedad || !kgs.length) return error('Completa guía, productor, variedad y al menos un bin con kg.');
+    if (!await confirmar('Confirmar recepción', `Guía <b>${esc(guia)}</b><br>${kgs.length} bins · ${num(sum(kgs))} kg`, 'Registrar')) return;
+    const r = accion('recepcion', 'RW', () => {
+      const dup = tjs.find(t => t && binTarja(t)); if (dup) return { ok: false, msg: `La tarja ${dup} ya existe en el sistema.` };
+      if (new Set(tjs.filter(Boolean)).size !== tjs.filter(Boolean).length) return { ok: false, msg: 'Hay tarjas repetidas en el ingreso.' };
+      const nuevas = kgs.map((kg, i) => { const b = nuevoBin('MP', { tarja: tjs[i] || null, variedad, kg, productor_id: prodId, guia, ubicacion_id: cam, estado: 'En cámara', usuario: yo.usuario });
+        mov(b.id, 'Recepción', null, cam, yo.usuario, 'Ingreso contra guía ' + guia, 'Aprobado', null); return b.tarja; });
+      return { ok: true, msg: nuevas.length + ' bins ingresados', tarjas: nuevas };
+    });
+    if (!r.ok) return error(r.msg);
+    await Swal.fire({ icon: 'success', title: r.msg, html: 'Tarjas:<br><span class="gt-tarja">' + r.tarjas.map(esc).join('<br>') + '</span>', confirmButtonColor: '#2f6b3f' });
+    recargar();
+  });
+};
+
+/* ---------- ÓRDENES DE TRABAJO ---------- */
+VISTAS.ordenes = function () {
+  const rw = puede('ordenes', 'RW');
+  const ots = [...db.ots].sort((a, b) => b.fecha.localeCompare(a.fecha) || b.id - a.id);
+  const cnt = (e) => ots.filter(o => o.estado === e).length;
+  $main().innerHTML = `
+  <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+    <span class="badge st st-info fs-6">${cnt('Planificada')} planificadas</span><span class="badge st st-info fs-6">${cnt('En proceso')} en proceso</span><span class="badge st st-ok fs-6">${cnt('Cerrada')} cerradas</span>
+    ${rw ? '<button class="btn btn-gt ms-auto" data-bs-toggle="modal" data-bs-target="#mdlNueva"><i class="bi bi-plus-lg me-1"></i>Nueva OT</button>' : ''}
+  </div>
+  <div class="gt-card"><table id="tblOT" class="table table-hover align-middle w-100">
+    <thead><tr><th>N° OT</th><th>Fecha</th><th>Variedad</th><th>Vuelta</th><th>Línea</th><th class="num">Bins</th><th class="num">Kg entrada</th><th class="num">Kg salida</th><th>Estado</th><th>Creó</th><th class="no-export"></th></tr></thead><tbody>
+    ${ots.map(o => `<tr><td class="fw-semibold">${esc(o.numero)}</td><td class="small" data-order="${o.fecha}">${fF(o.fecha)}</td><td>${esc(o.variedad)}</td>
+      <td>${o.vuelta === 1 ? '1ra (MP)' : '2da (calibrado)'}</td><td>${esc(ubicNom(o.linea_id))}</td><td class="num">${db.ot_bins.filter(x => x.ot_id === o.id).length}</td>
+      <td class="num" data-order="${o.kg_entrada}">${num(o.kg_entrada, 0)}</td><td class="num" data-order="${o.kg_salida}">${o.kg_salida ? num(o.kg_salida, 0) : '—'}</td>
+      <td>${badge(o.estado)}</td><td class="small">${esc(o.creado_por)}</td>
+      <td class="text-end text-nowrap"><button class="btn btn-sm btn-outline-secondary" data-ver="${o.id}" title="Detalle"><i class="bi bi-eye"></i></button>
+        ${rw && o.estado === 'Planificada' ? `<button class="btn btn-sm btn-outline-primary" data-iniciar="${o.id}"><i class="bi bi-play-fill"></i> Iniciar</button>` : ''}
+        ${rw && o.estado === 'En proceso' ? `<button class="btn btn-sm btn-outline-success" data-cerrar="${o.id}"><i class="bi bi-check2-square"></i> Cerrar</button>` : ''}</td></tr>`).join('')}
+  </tbody></table></div>
+
+  <div class="modal fade" id="mdlNueva" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title">Nueva orden de trabajo</h5><button class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+    <div class="modal-body">
+      <div class="row g-2 mb-3">
+        <div class="col-md-4"><label class="form-label small mb-1" for="otVar">Variedad</label><select id="otVar" class="form-select"><option value="">Seleccionar…</option>${VARIEDADES.map(v => `<option>${v}</option>`).join('')}</select></div>
+        <div class="col-md-4"><label class="form-label small mb-1" for="otVuelta">Vuelta</label><select id="otVuelta" class="form-select"><option value="1">1ra vuelta — bins MP</option><option value="2">2da vuelta — bins calibrados</option></select></div>
+        <div class="col-md-4"><label class="form-label small mb-1" for="otLinea">Línea</label><select id="otLinea" class="form-select">${db.ubicaciones.filter(u => u.tipo === 'Línea').map(u => `<option value="${u.id}">${esc(u.nombre)}</option>`).join('')}</select></div>
+      </div>
+      <div class="d-flex justify-content-between align-items-center mb-1"><div class="small fw-semibold">Bins disponibles en cámara</div><div class="small">Seleccionados: <b id="otSel">0</b> · <b id="otKg">0</b> kg</div></div>
+      <div class="table-responsive" style="max-height:340px"><table class="table table-sm table-hover mb-0"><thead class="sticky-top bg-white"><tr><th><input type="checkbox" id="otTodos" class="form-check-input" aria-label="Todos"></th><th>Tarja</th><th>Calibre</th><th class="num">Kg</th><th>Ubicación</th><th>Ingreso</th></tr></thead>
+        <tbody id="otBins"><tr><td colspan="6" class="text-muted small">Selecciona una variedad.</td></tr></tbody></table></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-gt" id="btnCrearOT">Crear OT</button></div>
+  </div></div></div>
+  <div class="modal fade" id="mdlDetalle" tabindex="-1"><div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title" id="detTitulo"></h5><button class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+    <div class="modal-body" id="detCuerpo"></div></div></div></div>`;
+
+  $('#tblOT').DataTable({ order: [[1, 'desc']], columnDefs: [{ targets: -1, orderable: false, searchable: false }] });
+  const disponibles = (variedad, vuelta) => db.bins.filter(b => b.tipo === (vuelta === 2 ? 'CAL' : 'MP') && b.variedad === variedad && b.estado === 'En cámara'
+    && !db.movimientos.some(m => m.bin_id === b.id && m.estado === 'Pendiente')).sort((a, b) => a.fecha_creacion.localeCompare(b.fecha_creacion));
+
+  if (rw) {
+    const selVar = document.getElementById('otVar'), selV = document.getElementById('otVuelta'), tb = document.getElementById('otBins');
+    const sumar = () => { const c = [...tb.querySelectorAll('.chk:checked')]; document.getElementById('otSel').textContent = c.length; document.getElementById('otKg').textContent = num(sum(c, x => x.dataset.kg)); };
+    const cargarBins = () => {
+      if (!selVar.value) return;
+      const bs = disponibles(selVar.value, +selV.value);
+      tb.innerHTML = bs.length ? bs.map(b => `<tr><td><input type="checkbox" class="form-check-input chk" value="${b.id}" data-kg="${b.kg}" aria-label="${esc(b.tarja)}"></td><td class="gt-tarja">${esc(b.tarja)}</td>
+        <td>${esc(b.calibre || '—')}</td><td class="num">${num(b.kg)}</td><td>${esc(ubicNom(b.ubicacion_id))}</td><td class="small">${fF(b.fecha_creacion)}</td></tr>`).join('')
+        : '<tr><td colspan="6" class="small text-muted">No hay bins disponibles para esa variedad.</td></tr>';
+      document.getElementById('otTodos').checked = false; sumar();
+    };
+    selVar.onchange = cargarBins; selV.onchange = cargarBins; tb.addEventListener('change', sumar);
+    document.getElementById('otTodos').onchange = function () { tb.querySelectorAll('.chk').forEach(c => c.checked = this.checked); sumar(); };
+    document.getElementById('btnCrearOT').onclick = async () => {
+      const ids = [...tb.querySelectorAll('.chk:checked')].map(c => +c.value);
+      const r = accion('ordenes', 'RW', () => {
+        if (!selVar.value || !ids.length) return { ok: false, msg: 'Indica variedad, línea y al menos un bin' };
+        const vuelta = +selV.value, disp = disponibles(selVar.value, vuelta).map(b => b.id);
+        if (!ids.every(id => disp.includes(id))) return { ok: false, msg: 'Algunos bins ya no están disponibles. Recarga la lista.' };
+        const kg = Math.round(sum(ids, id => binId(id).kg) * 10) / 10;
+        const ult = db.ots.length ? Math.max(...db.ots.map(o => parseInt(o.numero.slice(-4), 10))) : 0;
+        const numero = `OT-${new Date().getFullYear()}-${String(ult + 1).padStart(4, '0')}`;
+        const ot = ins('ots', { numero, fecha: ahora(), variedad: selVar.value, linea_id: +document.getElementById('otLinea').value, vuelta, estado: 'Planificada', kg_entrada: kg, kg_salida: 0, creado_por: yo.usuario, cerrado_en: null, observacion: null });
+        ids.forEach(id => { ins('ot_bins', { ot_id: ot.id, bin_id: id }); binId(id).estado = 'Asignado OT'; });
+        return { ok: true, msg: `${numero} creada con ${ids.length} bins (${num(kg, 0)} kg)` };
+      });
+      if (!r.ok) return error(r.msg);
+      bootstrap.Modal.getInstance(document.getElementById('mdlNueva')).hide();
+      await ok(r.msg); recargar();
+    };
+  }
+
+  $main().querySelectorAll('[data-ver]').forEach(b => b.onclick = () => {
+    const o = db.ots.find(x => x.id === +b.dataset.ver);
+    const ent = db.ot_bins.filter(x => x.ot_id === o.id).map(x => binId(x.bin_id));
+    const sal = db.bins.filter(x => x.ot_origen_id === o.id);
+    const res = {}; sal.forEach(s => { res[s.tipo] = res[s.tipo] || { n: 0, kg: 0 }; res[s.tipo].n++; res[s.tipo].kg += s.kg; });
+    document.getElementById('detTitulo').innerHTML = esc(o.numero) + ' ' + badge(o.estado);
+    document.getElementById('detCuerpo').innerHTML = `
+      <div class="row g-3 mb-3">
+        <div class="col-md-3"><div class="gt-card"><div class="small text-muted">Variedad · línea</div><div class="fw-semibold">${esc(o.variedad)}</div><div class="small">${esc(ubicNom(o.linea_id))} · ${o.vuelta === 1 ? '1ra vuelta' : '2da vuelta'}</div></div></div>
+        <div class="col-md-3"><div class="gt-card"><div class="small text-muted">Kg entrada</div><div class="fs-4 fw-bold">${num(o.kg_entrada)}</div></div></div>
+        <div class="col-md-3"><div class="gt-card"><div class="small text-muted">Kg salida</div><div class="fs-4 fw-bold">${o.kg_salida ? num(o.kg_salida) : '—'}</div></div></div>
+        <div class="col-md-3"><div class="gt-card"><div class="small text-muted">Cuadratura</div><div class="fs-4 fw-bold">${o.kg_salida ? num((o.kg_salida - o.kg_entrada) / o.kg_entrada * 100) + ' %' : '—'}</div><div class="small text-muted">${esc(o.observacion || '')}</div></div></div>
+      </div>
+      ${sal.length ? `<div class="mb-3 d-flex flex-wrap gap-2">${Object.entries(res).map(([t, v]) => `<span class="badge st st-ok fs-6">${TIPO_BIN[t][0]}: ${v.n} · ${num(v.kg)} kg (${num(v.kg / o.kg_entrada * 100)} %)</span>`).join('')}</div>` : ''}
+      <div class="row g-3">
+        <div class="col-lg-5"><h6 class="small fw-bold">Entradas (${ent.length})</h6><table class="table table-sm"><thead><tr><th>Tarja</th><th class="num">Kg</th><th>Estado</th></tr></thead><tbody>
+          ${ent.map(e => `<tr><td>${linkT(e.tarja)}</td><td class="num">${num(e.kg)}</td><td>${badge(e.estado)}</td></tr>`).join('')}</tbody></table></div>
+        <div class="col-lg-7"><h6 class="small fw-bold">Salidas tarjadas (${sal.length})</h6>
+          ${sal.length ? `<table class="table table-sm"><thead><tr><th>Tarja</th><th>Tipo</th><th>Calibre</th><th class="num">Kg</th><th>Ubicación</th></tr></thead><tbody>
+          ${sal.map(s => `<tr><td>${linkT(s.tarja)}</td><td>${tipoBin(s.tipo)}</td><td>${esc(s.calibre || '—')}</td><td class="num">${num(s.kg)}</td><td class="small">${esc(ubicNom(s.ubicacion_id))}</td></tr>`).join('')}</tbody></table>`
+          : '<div class="text-muted small">Aún sin salidas (se generan al cerrar la OT).</div>'}</div>
+      </div>`;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('mdlDetalle')).show();
+  });
+  document.getElementById('mdlDetalle').addEventListener('click', ev => { if (ev.target.closest('a[href^="#"]')) bootstrap.Modal.getInstance(document.getElementById('mdlDetalle'))?.hide(); });
+
+  $main().querySelectorAll('[data-iniciar]').forEach(b => b.onclick = async () => {
+    const o = db.ots.find(x => x.id === +b.dataset.iniciar);
+    if (!await confirmar('¿Iniciar ' + o.numero + '?', 'Los bins asignados se moverán a la línea de proceso (abastecimiento).', 'Iniciar')) return;
+    const r = accion('ordenes', 'RW', () => {
+      if (o.estado !== 'Planificada') return { ok: false, msg: 'La OT no está planificada' };
+      db.ot_bins.filter(x => x.ot_id === o.id).forEach(x => { const bn = binId(x.bin_id);
+        mov(bn.id, 'Abastecimiento', bn.ubicacion_id, o.linea_id, yo.usuario, 'Abastecimiento ' + o.numero); bn.ubicacion_id = o.linea_id; bn.estado = 'En proceso'; });
+      o.estado = 'En proceso';
+      return { ok: true, msg: o.numero + ' en proceso: bins abastecidos a la línea' };
+    });
+    if (!r.ok) return error(r.msg);
+    await ok(r.msg); recargar();
+  });
+
+  $main().querySelectorAll('[data-cerrar]').forEach(b => b.onclick = async () => {
+    const o = db.ots.find(x => x.id === +b.dataset.cerrar), kg = o.kg_entrada, v2 = o.vuelta === 2;
+    const sug = v2 ? { PT: .80, CAL: 0, COM: .15, DES: .05 } : { PT: .62, CAL: .20, COM: .12, DES: .06 };
+    const fila = (t, nombre, unidad) => `<tr><td class="text-start">${nombre}</td>
+      <td><input type="number" step="0.1" class="form-control form-control-sm num kgSal" id="kg_${t}" value="${(kg * sug[t]).toFixed(1)}" ${t === 'CAL' && v2 ? 'disabled' : ''} aria-label="Kg ${nombre}"></td>
+      <td><input type="number" class="form-control form-control-sm num" id="n_${t}" value="${Math.max(1, Math.round(kg * sug[t] / unidad))}" ${t === 'CAL' && v2 ? 'disabled' : ''} aria-label="Unidades ${nombre}"></td></tr>`;
+    const res = await Swal.fire({ title: 'Cerrar ' + o.numero, width: 640, confirmButtonText: 'Cerrar OT y tarjar', showCancelButton: true, cancelButtonText: 'Cancelar', confirmButtonColor: '#2f6b3f',
+      html: `<div class="small mb-2">Kg de entrada: <b>${num(kg)}</b> · tolerancia de cuadratura ±2 %</div>
+        <table class="table table-sm align-middle"><thead><tr><th class="text-start">Salida</th><th>Kg</th><th>Unidades</th></tr></thead><tbody>
+        ${fila('PT', 'Pallet PT', 900)}${fila('CAL', 'Bin Calibrado', 380)}${fila('COM', 'Bin Comercial', 380)}${fila('DES', 'Bin Desecho', 400)}</tbody></table>
+        <div class="row g-2"><div class="col"><input id="cCal" class="form-control form-control-sm" placeholder="Calibre (ej. 113)" aria-label="Calibre"></div>
+        <div class="col"><input id="cCol" class="form-control form-control-sm" placeholder="Color (ej. ${esc(COLORES[o.variedad])})" aria-label="Color"></div></div>
+        <div class="mt-2 small" id="cuad"></div>`,
+      didOpen: () => { const calc = () => { const t = [...document.querySelectorAll('.kgSal')].reduce((a, i) => a + (i.disabled ? 0 : parseFloat(i.value) || 0), 0);
+          const p = (t - kg) / kg * 100, okk = Math.abs(p) <= TOLERANCIA_KG * 100;
+          document.getElementById('cuad').innerHTML = `Salida: <b>${num(t)}</b> kg · diferencia <b class="${okk ? 'text-success' : 'text-danger'}">${num(p)} %</b> ${okk ? '✔' : '✖ fuera de tolerancia'}`; };
+        document.querySelectorAll('.kgSal').forEach(i => i.addEventListener('input', calc)); calc(); },
+      preConfirm: () => { const d = { calibre: document.getElementById('cCal').value.trim(), color: document.getElementById('cCol').value.trim() };
+        ['PT', 'CAL', 'COM', 'DES'].forEach(t => { const k = document.getElementById('kg_' + t); if (!k.disabled) d[t] = [parseFloat(k.value) || 0, parseInt(document.getElementById('n_' + t).value, 10) || 0]; }); return d; } });
+    if (!res.isConfirmed) return;
+    const d = res.value;
+    const r = accion('ordenes', 'RW', () => {
+      if (o.estado !== 'En proceso') return { ok: false, msg: 'La OT no está en proceso' };
+      const dest = { PT: ['Pre-frío 1', 'En pre-frío'], CAL: ['Cámara Calibrado', 'En cámara'], COM: ['Patio Comercial', 'En patio'], DES: ['Patio Desecho', 'En patio'] };
+      const sal = Object.entries(dest).filter(([t]) => d[t] && d[t][0] > 0);
+      const kgTot = sum(sal, ([t]) => d[t][0]), pct = Math.abs(kgTot - kg) / kg;
+      if (pct > TOLERANCIA_KG) return { ok: false, msg: `Cuadratura de kilos fuera de tolerancia: entrada ${num(kg, 1)} kg, salida ${num(kgTot, 1)} kg (diferencia ${num(pct * 100, 1)} %). Máximo permitido ±2 %.` };
+      const tarjas = [];
+      sal.forEach(([t, [dn, est]]) => { const n = Math.max(1, d[t][1]), did = ubicId(dn);
+        for (let i = 0; i < n; i++) { const bn = nuevoBin(t, { variedad: o.variedad, calibre: t === 'DES' ? null : d.calibre || null, color: t === 'DES' ? null : d.color || null,
+          kg: Math.round(d[t][0] / n * 10) / 10, ubicacion_id: did, estado: est, ot: o.id, usuario: yo.usuario });
+          mov(bn.id, 'Tarjado', o.linea_id, did, yo.usuario, 'Salida de ' + o.numero); tarjas.push(bn.tarja); } });
+      db.ot_bins.filter(x => x.ot_id === o.id).forEach(x => { binId(x.bin_id).estado = 'Procesado'; });
+      Object.assign(o, { estado: 'Cerrada', kg_salida: Math.round(kgTot * 10) / 10, cerrado_en: ahora(), observacion: `Cuadratura OK (${num(pct * 100, 1)} %)` });
+      return { ok: true, msg: o.numero + ' cerrada', tarjas };
+    });
+    if (!r.ok) return error(r.msg);
+    await Swal.fire({ icon: 'success', title: r.msg, html: `${r.tarjas.length} tarjas generadas:<br><span class="gt-tarja small">${r.tarjas.map(esc).join(', ')}</span>`, confirmButtonColor: '#2f6b3f' });
+    recargar();
+  });
+};
+
+/* ---------- MOVIMIENTOS ---------- */
+VISTAS.movimientos = function () {
+  const rw = puede('movimientos', 'RW'), aprueba = rw && ['Administrador', 'Jefe de Turno'].includes(yo.perfil);
+  const pend = db.movimientos.filter(m => m.estado === 'Pendiente').sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const movs = [...db.movimientos].sort((a, b) => b.fecha.localeCompare(a.fecha) || b.id - a.id);
+  $main().innerHTML = `
+  <div class="row g-3 mb-3">
+    ${rw ? `<div class="col-xl-5"><div class="gt-card"><h6><i class="bi bi-upc-scan me-1"></i>Registrar movimiento</h6>
+      <div class="gt-scan-wrap mb-2"><i class="bi bi-upc-scan"></i><input id="mvTarja" class="form-control form-control-lg gt-scan" placeholder="Escanear tarja…" aria-label="Tarja"></div>
+      <div id="infoBin" class="small mb-2 text-muted">Escanea o escribe la tarja y presiona Enter.</div>
+      <form id="frmMov" hidden>
+        <div class="row g-2">
+          <div class="col-md-6"><label class="form-label small mb-1" for="mvDest">Destino</label><select class="form-select" id="mvDest" required><option value="">Seleccionar…</option>
+            ${db.ubicaciones.filter(u => u.tipo !== 'Línea').map(u => `<option value="${u.id}">${esc(u.nombre)} (${esc(u.tipo)})</option>`).join('')}</select></div>
+          <div class="col-md-6"><label class="form-label small mb-1" for="mvMotivo">Motivo</label><select class="form-select" id="mvMotivo">
+            ${MOTIVOS_AUTO.map(m => `<option>${m}</option>`).join('')}<option value="Otro">Otro (requiere aprobación)</option></select></div>
+          <div class="col-12" id="grpDet" hidden><input class="form-control" id="mvDet" placeholder="Describe el motivo" aria-label="Detalle"></div>
+        </div>
+        <div class="form-text">Los motivos predefinidos se aprueban automáticamente; “Otro” queda pendiente para el Jefe de Turno.</div>
+        <button class="btn btn-gt w-100 mt-2"><i class="bi bi-arrow-left-right me-1"></i>Mover</button>
+      </form></div></div>` : ''}
+    <div class="${rw ? 'col-xl-7' : 'col-12'}"><div class="gt-card"><h6><i class="bi bi-hourglass-split me-1"></i>Pendientes de aprobación (${pend.length})</h6>
+      ${pend.length ? pend.map(m => { const b = binId(m.bin_id); return `<div class="d-flex flex-wrap align-items-center gap-2 border-bottom py-2"><div class="flex-grow-1">
+        <div><span class="gt-tarja">${esc(b.tarja)}</span> · ${esc(b.variedad)} · ${num(b.kg, 0)} kg</div>
+        <div class="small text-muted">${esc(ubicNom(m.origen_id))} → <b>${esc(ubicNom(m.destino_id))}</b> · ${esc(m.motivo)} · por ${esc(m.usuario)}, ${fC(m.fecha)}</div></div>
+        ${aprueba ? `<button class="btn btn-sm btn-outline-success" data-res="aprobar" data-id="${m.id}"><i class="bi bi-check-lg"></i> Aprobar</button>
+          <button class="btn btn-sm btn-outline-danger" data-res="rechazar" data-id="${m.id}" title="Rechazar"><i class="bi bi-x-lg"></i></button>` : '<span class="badge st st-warn">Pendiente</span>'}</div>`; }).join('')
+        : '<div class="text-muted small">No hay movimientos pendientes.</div>'}
+    </div></div>
+  </div>
+  <div class="gt-card"><h6>Historial de movimientos</h6>
+    <table id="tblMov" class="table table-sm table-striped table-hover w-100 nowrap"><thead><tr><th>Fecha</th><th>Tarja</th><th>Unidad</th><th>Variedad</th><th>Tipo</th><th>Origen</th><th>Destino</th><th>Motivo</th><th>Usuario</th><th>Estado</th><th>Aprobó</th></tr></thead><tbody>
+    ${movs.map(m => { const b = binId(m.bin_id); return `<tr><td class="small" data-order="${m.fecha}">${fF(m.fecha)}</td><td>${linkT(b.tarja)}</td><td class="small">${TIPO_BIN[b.tipo][0]}</td>
+      <td class="small">${esc(b.variedad)}</td><td>${esc(m.tipo)}</td><td class="small">${esc(ubicNom(m.origen_id) || '—')}</td><td class="small">${esc(ubicNom(m.destino_id) || '—')}</td>
+      <td class="small">${esc(m.motivo)}</td><td class="small">${esc(m.usuario)}</td><td>${badge(m.estado)}</td><td class="small">${esc(m.aprobado_por || '')}</td></tr>`; }).join('')}
+    </tbody></table></div>`;
+  $('#tblMov').DataTable({ order: [[0, 'desc']], scrollX: true });
+
+  if (rw) {
+    const txt = document.getElementById('mvTarja'), frm = document.getElementById('frmMov'), info = document.getElementById('infoBin');
+    let actual = null;
+    txt.focus();
+    txt.addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return; e.preventDefault();
+      const b = binTarja(txt.value);
+      if (!b) { info.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> Tarja no encontrada</span>'; frm.hidden = true; return; }
+      actual = b; txt.value = b.tarja;
+      info.innerHTML = `<div class="p-2 rounded" style="background:#f4f7f3"><span class="gt-tarja">${esc(b.tarja)}</span> ${tipoBin(b.tipo)} ${badge(b.estado)}<br>
+        ${esc(b.variedad)}${b.calibre ? ' · cal. ' + esc(b.calibre) : ''} · ${num(b.kg)} kg · <i class="bi bi-geo-alt"></i> <b>${esc(ubicNom(b.ubicacion_id) || '—')}</b>
+        ${b.plaga ? `<br><span class="text-danger"><i class="bi bi-bug"></i> ${esc(b.plaga)}</span>` : ''}</div>`;
+      frm.hidden = false; document.getElementById('mvDest').focus();
+    });
+    document.getElementById('mvMotivo').onchange = (e) => { document.getElementById('grpDet').hidden = e.target.value !== 'Otro'; };
+    frm.addEventListener('submit', async ev => {
+      ev.preventDefault();
+      const dest = +document.getElementById('mvDest').value, motivo = document.getElementById('mvMotivo').value, det = document.getElementById('mvDet').value.trim();
+      const r = accion('movimientos', 'RW', () => {
+        const b = actual;
+        if (!dest) return { ok: false, msg: 'Selecciona el destino' };
+        if (dest === b.ubicacion_id) return { ok: false, msg: 'El bin ya está en ese destino' };
+        if (['Procesado', 'En proceso', 'Despachado'].includes(b.estado)) return { ok: false, msg: `El bin está ${b.estado} y no se puede mover` };
+        const dn = ubicNom(dest);
+        if (b.estado === 'Objetado' && dn !== 'Patio Desecho') return { ok: false, msg: 'Bin objetado por Control de Calidad: solo puede ir a Patio Desecho o ser liberado por CC' };
+        if (db.movimientos.some(m => m.bin_id === b.id && m.estado === 'Pendiente')) return { ok: false, msg: 'El bin ya tiene un movimiento pendiente de aprobación' };
+        if (MOTIVOS_AUTO.includes(motivo)) {
+          let est = b.estado;
+          if (dn === 'Despachado') est = 'Despachado'; else if (dn === 'Inspección SAG') est = 'Inspección SAG';
+          else if (dn.startsWith('Pre-frío')) est = 'En pre-frío'; else if (dn.startsWith('C.F.')) est = 'Almacenado';
+          else if (dn.startsWith('Cámara') && b.estado === 'Inspección SAG') est = 'En cámara';
+          mov(b.id, dn === 'Despachado' ? 'Despacho' : 'Movimiento', b.ubicacion_id, dest, yo.usuario, motivo);
+          b.ubicacion_id = dest; b.estado = est;
+          return { ok: true, msg: `${b.tarja} movido a ${dn}` };
+        }
+        mov(b.id, 'Movimiento', b.ubicacion_id, dest, yo.usuario, 'Otro: ' + (det || 'sin detalle'), 'Pendiente', null);
+        return { ok: true, pendiente: true, msg: 'Movimiento enviado a aprobación del Jefe de Turno' };
+      });
+      if (!r.ok) return error(r.msg);
+      await Swal.fire({ icon: r.pendiente ? 'info' : 'success', title: r.msg, timer: 1800, showConfirmButton: false });
+      recargar();
+    });
+  }
+  $main().querySelectorAll('[data-res]').forEach(btn => btn.onclick = async () => {
+    const ap = btn.dataset.res === 'aprobar';
+    if (!await confirmar(ap ? '¿Aprobar movimiento?' : '¿Rechazar movimiento?', '', ap ? 'Aprobar' : 'Rechazar', !ap)) return;
+    const r = accion('movimientos', 'RW', () => {
+      if (!['Administrador', 'Jefe de Turno'].includes(yo.perfil)) return { ok: false, msg: 'Solo el Jefe de Turno o el Administrador aprueban movimientos' };
+      const m = db.movimientos.find(x => x.id === +btn.dataset.id && x.estado === 'Pendiente');
+      if (!m) return { ok: false, msg: 'Movimiento no encontrado o ya resuelto' };
+      m.estado = ap ? 'Aprobado' : 'Rechazado'; m.aprobado_por = yo.usuario;
+      if (ap) binId(m.bin_id).ubicacion_id = m.destino_id;
+      return { ok: true, msg: ap ? 'Movimiento aprobado' : 'Movimiento rechazado' };
+    });
+    if (!r.ok) return error(r.msg);
+    await ok(r.msg); recargar();
+  });
+};
+
+/* ---------- TRAZABILIDAD ---------- */
+VISTAS.trazabilidad = function (tarja) {
+  const objetados = db.bins.filter(b => b.estado === 'Objetado');
+  const ej = [db.bins.find(b => b.tipo === 'PT'), db.bins.find(b => b.tipo === 'CAL'), db.bins.find(b => b.tipo === 'MP' && b.estado === 'Procesado'),
+    [...db.bins].reverse().find(b => b.tipo === 'MP' && b.estado === 'En cámara')].filter(Boolean);
+  $main().innerHTML = `
+  <div class="gt-card mb-3"><div class="row g-2 align-items-center">
+    <div class="col-lg-6"><div class="gt-scan-wrap"><i class="bi bi-upc-scan"></i><input id="trTarja" class="form-control form-control-lg gt-scan" placeholder="Escanear o escribir tarja…" aria-label="Tarja"></div></div>
+    <div class="col-auto"><button id="btnTraza" class="btn btn-lg btn-gt"><i class="bi bi-search"></i> Rastrear</button></div>
+    <div class="col-lg small text-muted">Probar con: ${ej.map(b => `<a href="#trazabilidad/${b.tarja}" class="gt-tarja me-2">${b.tarja}</a>`).join('')}</div>
+  </div></div>
+  <div id="resultado"></div>
+  <div class="gt-card mt-3"><h6><i class="bi bi-bug me-1"></i>Bins objetados por Control de Calidad (${objetados.length})</h6>
+    ${objetados.length ? `<div class="table-responsive"><table class="table table-sm mb-0"><thead><tr><th>Tarja</th><th>Variedad</th><th class="num">Kg</th><th>Plaga</th><th>Guía</th><th>Productor</th><th>Ubicación</th></tr></thead><tbody>
+      ${objetados.map(o => `<tr><td>${linkT(o.tarja)}</td><td>${esc(o.variedad)}</td><td class="num">${num(o.kg, 1)}</td><td class="text-danger">${esc(o.plaga)}</td><td>${esc(o.guia)}</td><td>${esc(prod(o.productor_id)?.nombre)}</td><td>${esc(ubicNom(o.ubicacion_id))}</td></tr>`).join('')}
+    </tbody></table></div>` : '<div class="small text-muted">No hay bins objetados.</div>'}
+  </div>`;
+  const txt = document.getElementById('trTarja'), out = document.getElementById('resultado');
+  const ir = () => { const t = txt.value.trim().toUpperCase(); if (t) location.hash = 'trazabilidad/' + encodeURIComponent(t); };
+  document.getElementById('btnTraza').onclick = ir;
+  txt.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); ir(); } });
+  txt.focus();
+  if (!tarja) return;
+  txt.value = tarja;
+  const b = binTarja(tarja);
+  if (!b) { out.innerHTML = `<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-1"></i>Tarja ${esc(tarja)} no encontrada</div>`; return; }
+  const p = prod(b.productor_id), cc = puede('trazabilidad', 'RW');
+  const movs = db.movimientos.filter(m => m.bin_id === b.id).sort((a, c) => a.fecha.localeCompare(c.fecha) || a.id - c.id);
+  const icono = { 'Recepción': 'bi-truck', 'Movimiento': 'bi-arrow-left-right', 'Abastecimiento': 'bi-gear', 'Tarjado': 'bi-tag', 'Objeción': 'bi-bug', 'Liberación': 'bi-shield-check', 'Despacho': 'bi-send' };
+  const otO = b.ot_origen_id ? db.ots.find(o => o.id === b.ot_origen_id) : null;
+  const ent = otO ? db.ot_bins.filter(x => x.ot_id === otO.id).map(x => binId(x.bin_id)) : [];
+  const rel = db.ot_bins.find(x => x.bin_id === b.id), otD = rel ? db.ots.find(o => o.id === rel.ot_id) : null;
+  const sal = otD ? db.bins.filter(x => x.ot_origen_id === otD.id) : [];
+  const fila = (k, v) => v ? `<tr><th class="text-muted fw-normal">${k}</th><td>${v}</td></tr>` : '';
+  let acc = '';
+  if (cc && b.estado === 'Objetado') acc = '<button class="btn btn-sm btn-outline-success" id="btnLiberar"><i class="bi bi-shield-check"></i> Liberar</button>';
+  else if (cc && ['En cámara', 'Asignado OT'].includes(b.estado)) acc = '<button class="btn btn-sm btn-outline-danger" id="btnObjetar"><i class="bi bi-bug"></i> Objetar por plaga</button>';
+  const prods = [...new Set(ent.map(e => prod(e.productor_id)?.nombre).filter(Boolean))];
+  out.innerHTML = `<div class="row g-3">
+    <div class="col-lg-4"><div class="gt-card">
+      <div class="d-flex justify-content-between align-items-start mb-2"><div><div class="gt-tarja fs-4">${esc(b.tarja)}</div><div>${tipoBin(b.tipo)} ${badge(b.estado)}</div></div><div>${acc}</div></div>
+      <table class="table table-sm mb-0">${fila('Variedad', esc(b.variedad))}${fila('Calibre', esc(b.calibre))}${fila('Color', esc(b.color))}${fila('Kg', num(b.kg))}
+        ${fila('Ubicación actual', '<i class="bi bi-geo-alt"></i> ' + esc(ubicNom(b.ubicacion_id) || '—'))}${b.plaga ? `<tr><th class="text-muted fw-normal">Plaga</th><td class="text-danger fw-semibold">${esc(b.plaga)}</td></tr>` : ''}
+        ${fila('Guía', esc(b.guia))}${p ? fila('Productor', `${esc(p.nombre)}<div class="small text-muted">${esc(p.huerto)} · ${esc(p.comuna)}</div>`) : ''}${fila('Creado', fF(b.fecha_creacion) + ' · ' + esc(b.usuario))}</table>
+    </div></div>
+    <div class="col-lg-4">
+      ${otO ? `<div class="gt-card mb-3"><h6><i class="bi bi-arrow-up-circle me-1"></i>Origen · ${esc(otO.numero)}</h6>
+        <div class="small mb-2">${esc(ubicNom(otO.linea_id))} · ${otO.vuelta === 1 ? '1ra vuelta' : '2da vuelta'} · cerrada ${fF(otO.cerrado_en)}</div>
+        ${prods.length ? `<div class="small mb-2"><b>Productores:</b> ${prods.map(esc).join(', ')}</div>` : ''}
+        <div class="small"><b>${ent.length} bins de entrada:</b><br>${ent.map(e => linkT(e.tarja) + (e.guia ? ` <span class="text-muted">(${esc(e.guia)})</span>` : '')).join(' · ')}</div></div>` : ''}
+      ${otD ? `<div class="gt-card mb-3"><h6><i class="bi bi-arrow-down-circle me-1"></i>Consumido en ${esc(otD.numero)} ${badge(otD.estado)}</h6>
+        <div class="small mb-2">${esc(ubicNom(otD.linea_id))} · ${esc(otD.variedad)}</div>
+        ${sal.length ? `<table class="table table-sm mb-0"><thead><tr><th>Tarja</th><th>Tipo</th><th class="num">Kg</th><th>Estado</th></tr></thead><tbody>
+          ${sal.map(s => `<tr><td>${linkT(s.tarja)}</td><td>${tipoBin(s.tipo)}</td><td class="num">${num(s.kg)}</td><td>${badge(s.estado)}</td></tr>`).join('')}</tbody></table>`
+          : '<div class="small text-muted">La OT aún no genera salidas.</div>'}</div>` : ''}
+      ${!otO && !otD ? '<div class="gt-card text-muted small">Sin órdenes de trabajo asociadas todavía.</div>' : ''}
+    </div>
+    <div class="col-lg-4"><div class="gt-card"><h6>Historial</h6><ul class="gt-timeline">
+      ${movs.map(m => `<li><span class="dot ${m.tipo === 'Objeción' ? 'bad' : ''}"><i class="bi ${icono[m.tipo] || 'bi-dot'}"></i></span>
+        <div class="t">${esc(m.tipo)} ${m.estado !== 'Aprobado' ? badge(m.estado) : ''}</div>
+        <div>${m.origen_id || m.destino_id ? esc(ubicNom(m.origen_id) || '—') + ' → <b>' + esc(ubicNom(m.destino_id) || '—') + '</b>' : ''} <span class="small text-muted">${esc(m.motivo || '')}</span></div>
+        <div class="m">${fF(m.fecha)} · ${esc(m.usuario)}${m.aprobado_por && m.aprobado_por !== 'auto' ? ' · aprobó ' + esc(m.aprobado_por) : ''}</div></li>`).join('')}
+    </ul></div></div></div>`;
+
+  document.getElementById('btnObjetar')?.addEventListener('click', async () => {
+    const { value: plaga } = await Swal.fire({ title: 'Objetar ' + b.tarja, input: 'select', inputPlaceholder: 'Plaga detectada…',
+      inputOptions: { 'Pulgón lanígero': 'Pulgón lanígero', 'Arañita roja': 'Arañita roja', 'Chanchito blanco': 'Chanchito blanco', 'Chanchito rojo': 'Chanchito rojo', 'Escama de San José': 'Escama de San José' },
+      showCancelButton: true, confirmButtonText: 'Objetar', cancelButtonText: 'Cancelar', confirmButtonColor: '#b8323a', inputValidator: v => !v && 'Selecciona la plaga' });
+    if (!plaga) return;
+    const r = accion('trazabilidad', 'RW', () => {
+      if (!['En cámara', 'Asignado OT'].includes(b.estado)) return { ok: false, msg: 'Solo se pueden objetar bins en cámara' };
+      if (b.estado === 'Asignado OT') { // se libera de la OT planificada
+        const rel2 = db.ot_bins.find(x => x.bin_id === b.id), ot = rel2 && db.ots.find(o => o.id === rel2.ot_id && o.estado === 'Planificada');
+        if (ot) { db.ot_bins = db.ot_bins.filter(x => x !== rel2); ot.kg_entrada = Math.round(sum(db.ot_bins.filter(x => x.ot_id === ot.id), x => binId(x.bin_id).kg) * 10) / 10; }
+      }
+      b.estado = 'Objetado'; b.plaga = plaga; mov(b.id, 'Objeción', null, null, yo.usuario, 'Plaga: ' + plaga, 'Aprobado', null);
+      return { ok: true, msg: `${b.tarja} objetado por ${plaga}` };
+    });
+    if (!r.ok) return error(r.msg);
+    await ok(r.msg); recargar();
+  });
+  document.getElementById('btnLiberar')?.addEventListener('click', async () => {
+    const res = await Swal.fire({ title: 'Liberar ' + b.tarja, input: 'text', inputPlaceholder: 'Observación (ej. tratamiento aplicado)', showCancelButton: true,
+      confirmButtonText: 'Liberar', cancelButtonText: 'Cancelar', confirmButtonColor: '#2f6b3f' });
+    if (!res.isConfirmed) return;
+    const r = accion('trazabilidad', 'RW', () => { b.estado = 'En cámara'; b.plaga = null;
+      mov(b.id, 'Liberación', null, null, yo.usuario, res.value || 'Liberado por Control de Calidad', 'Aprobado', null); return { ok: true, msg: b.tarja + ' liberado' }; });
+    if (!r.ok) return error(r.msg);
+    await ok(r.msg); recargar();
+  });
+};
+
+/* ---------- ADMINISTRACIÓN (equivale a eusuarios.php) ---------- */
+VISTAS.administracion = function () {
+  const us = [...db.usuarios].sort((a, b) => a.perfil_id - b.perfil_id || a.nombre.localeCompare(b.nombre));
+  const nivelDe = (pid, mod) => (db.permisos.find(x => x.perfil_id === pid && x.modulo === mod) || {}).nivel || '';
+  $main().innerHTML = `
+  <ul class="nav nav-tabs">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabU"><i class="bi bi-people me-1"></i>Usuarios</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabP"><i class="bi bi-shield-lock me-1"></i>Perfiles y permisos</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabD"><i class="bi bi-arrow-counterclockwise me-1"></i>Demo</button></li>
+  </ul>
+  <div class="tab-content gt-card rounded-top-0 border-top-0">
+    <div class="tab-pane fade show active" id="tabU">
+      <div class="d-flex justify-content-end mb-2"><button class="btn btn-gt" id="btnNuevo"><i class="bi bi-person-plus me-1"></i>Nuevo usuario</button></div>
+      <table id="tblU" class="table table-hover align-middle w-100"><thead><tr><th>Usuario</th><th>Nombre</th><th>Perfil</th><th>Estado</th><th>Último acceso</th><th>Notas</th><th class="no-export"></th></tr></thead><tbody>
+      ${us.map(u => `<tr><td class="gt-tarja">${esc(u.usuario)}</td><td>${esc(u.nombre)}</td><td><span class="badge gt-badge-perfil">${esc(perfil(u.perfil_id).nombre)}</span></td>
+        <td>${badge(u.estado)}</td><td class="small" data-order="${u.ultimo_acceso || ''}">${u.ultimo_acceso ? fF(u.ultimo_acceso) : '—'}</td><td class="small text-muted">${esc(u.notas)}</td>
+        <td class="text-end text-nowrap"><button class="btn btn-sm btn-outline-secondary" data-editar="${u.id}" title="Editar"><i class="bi bi-pencil"></i></button>
+          ${u.id !== yo.id ? `<button class="btn btn-sm ${u.estado === 'Activo' ? 'btn-outline-danger' : 'btn-outline-success'}" data-estado="${u.id}" title="${u.estado === 'Activo' ? 'Desactivar' : 'Activar'}"><i class="bi ${u.estado === 'Activo' ? 'bi-person-slash' : 'bi-person-check'}"></i></button>` : ''}</td></tr>`).join('')}
+      </tbody></table>
+    </div>
+    <div class="tab-pane fade" id="tabP">
+      <p class="small text-muted mb-2">Define qué módulos ve cada perfil. <b>Completo</b> = puede registrar y modificar · <b>Lectura</b> = solo consulta · <b>Sin acceso</b> = el módulo no aparece en el menú. El Administrador conserva siempre acceso total.</p>
+      <div class="table-responsive"><table class="table table-bordered gt-matriz" id="tblMatriz"><thead class="table-light"><tr><th>Módulo</th>
+        ${db.perfiles.map(p => `<th>${esc(p.nombre)}<div class="small fw-normal text-muted">${db.usuarios.filter(u => u.perfil_id === p.id).length} usuario(s)</div></th>`).join('')}</tr></thead><tbody>
+        ${Object.entries(MODULOS).map(([k, m]) => `<tr><td><i class="bi ${m[1]} me-1"></i>${m[0]}</td>${db.perfiles.map(p => { const n = nivelDe(p.id, k), bloq = p.nombre === 'Administrador' || k === 'dashboard';
+          return `<td><select class="form-select form-select-sm" data-perfil="${p.id}" data-modulo="${k}" ${bloq ? 'disabled' : ''} aria-label="${esc(p.nombre)} ${m[0]}">
+            <option value="RW" ${n === 'RW' ? 'selected' : ''}>✅ Completo</option><option value="R" ${n === 'R' ? 'selected' : ''}>👁 Lectura</option><option value="" ${n === '' ? 'selected' : ''}>❌ Sin acceso</option></select></td>`; }).join('')}</tr>`).join('')}
+      </tbody></table></div>
+      <div class="row g-2 mt-1">${db.perfiles.map(p => `<div class="col-md-6 col-xl-3 small"><b>${esc(p.nombre)}:</b> <span class="text-muted">${esc(p.descripcion)}</span></div>`).join('')}</div>
+      <div class="text-end mt-3"><button class="btn btn-gt" id="btnMatriz"><i class="bi bi-save me-1"></i>Guardar permisos</button></div>
+    </div>
+    <div class="tab-pane fade" id="tabD">
+      <p>Restaura el demo al estado inicial: usuarios y contraseñas originales, existencias de los documentos y operación de ejemplo. Se pierden los registros hechos durante la presentación.</p>
+      <p class="small text-muted">Los datos de este demo se guardan solo en este navegador.</p>
+      <button class="btn btn-outline-danger" id="btnReset"><i class="bi bi-arrow-counterclockwise me-1"></i>Reiniciar demo</button>
+    </div>
+  </div>
+  <div class="modal fade" id="mdlU" tabindex="-1"><div class="modal-dialog"><form class="modal-content" id="frmU" autocomplete="off">
+    <div class="modal-header"><h5 class="modal-title" id="mdlUT">Usuario</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+    <div class="modal-body">
+      <div class="mb-2"><label class="form-label small mb-1" for="uUsuario">Usuario</label><input class="form-control" id="uUsuario" required></div>
+      <div class="mb-2"><label class="form-label small mb-1" for="uNombre">Nombre completo</label><input class="form-control" id="uNombre" required></div>
+      <div class="mb-2"><label class="form-label small mb-1" for="uPerfil">Perfil</label><select class="form-select" id="uPerfil">${db.perfiles.map(p => `<option value="${p.id}">${esc(p.nombre)}</option>`).join('')}</select></div>
+      <div class="mb-2"><label class="form-label small mb-1" for="uClave">Contraseña <span class="text-muted" id="uClaveTxt"></span></label>
+        <div class="input-group"><input class="form-control" id="uClave" type="password" autocomplete="new-password"><button type="button" class="btn btn-outline-secondary" id="btnVer" aria-label="Ver contraseña"><i class="bi bi-eye"></i></button></div></div>
+      <div class="mb-2"><label class="form-label small mb-1" for="uNotas">Notas</label><input class="form-control" id="uNotas" placeholder="Turno, línea, cámara…"></div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-gt">Guardar</button></div>
+  </form></div></div>`;
+  $('#tblU').DataTable({ order: [], columnDefs: [{ targets: -1, orderable: false, searchable: false }] });
+  const mdl = bootstrap.Modal.getOrCreateInstance(document.getElementById('mdlU'));
+  let edit = null;
+  const abrir = (u) => { edit = u;
+    document.getElementById('uUsuario').value = u ? u.usuario : ''; document.getElementById('uNombre').value = u ? u.nombre : '';
+    document.getElementById('uPerfil').value = u ? u.perfil_id : db.perfiles[db.perfiles.length - 1].id; document.getElementById('uNotas').value = u ? u.notas || '' : '';
+    document.getElementById('uClave').value = ''; document.getElementById('uClaveTxt').textContent = u ? '(dejar vacía para no cambiar)' : '(mínimo 6 caracteres)';
+    document.getElementById('mdlUT').textContent = u ? 'Editar usuario' : 'Nuevo usuario'; mdl.show(); };
+  document.getElementById('btnNuevo').onclick = () => abrir(null);
+  $main().querySelectorAll('[data-editar]').forEach(b => b.onclick = () => abrir(db.usuarios.find(u => u.id === +b.dataset.editar)));
+  document.getElementById('btnVer').onclick = () => { const c = document.getElementById('uClave'); c.type = c.type === 'password' ? 'text' : 'password'; };
+  document.getElementById('frmU').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const usr = document.getElementById('uUsuario').value.trim().toLowerCase(), nom = document.getElementById('uNombre').value.trim(),
+      pid = +document.getElementById('uPerfil').value, cl = document.getElementById('uClave').value, notas = document.getElementById('uNotas').value.trim();
+    const r = accion('administracion', 'RW', () => {
+      if (!/^[a-z0-9._-]{3,40}$/.test(usr)) return { ok: false, msg: 'Usuario inválido (3-40 caracteres: letras, números, . _ -)' };
+      if (!nom) return { ok: false, msg: 'El nombre es obligatorio' };
+      if (db.usuarios.some(u => u.usuario === usr && u !== edit)) return { ok: false, msg: 'El usuario ya existe' };
+      if ((!edit || cl) && cl.length < 6) return { ok: false, msg: 'La contraseña debe tener al menos 6 caracteres' };
+      if (edit) { if (edit.id === yo.id && pid !== edit.perfil_id) return { ok: false, msg: 'No puedes cambiar tu propio perfil' };
+        Object.assign(edit, { usuario: usr, nombre: nom, perfil_id: pid, notas }); if (cl) edit.clave = cl; return { ok: true, msg: 'Usuario actualizado' }; }
+      ins('usuarios', { usuario: usr, clave: cl, nombre: nom, perfil_id: pid, estado: 'Activo', ultimo_acceso: null, notas, creado: ahora() });
+      return { ok: true, msg: 'Usuario creado' };
+    });
+    if (!r.ok) return error(r.msg);
+    mdl.hide(); await ok(r.msg); recargar();
+  });
+  $main().querySelectorAll('[data-estado]').forEach(b => b.onclick = async () => {
+    const u = db.usuarios.find(x => x.id === +b.dataset.estado), act = u.estado === 'Activo';
+    if (!await confirmar(`${act ? 'Desactivar' : 'Activar'} a ${esc(u.nombre)}?`, act ? 'No podrá ingresar al sistema hasta que se reactive.' : '', act ? 'Desactivar' : 'Activar', act)) return;
+    const r = accion('administracion', 'RW', () => { u.estado = act ? 'Inactivo' : 'Activo'; return { ok: true, msg: 'Estado actualizado' }; });
+    if (!r.ok) return error(r.msg);
+    recargar();
+  });
+  document.getElementById('btnMatriz').onclick = () => {
+    const r = accion('administracion', 'RW', () => {
+      const adm = db.perfiles.find(p => p.nombre === 'Administrador').id;
+      db.permisos = db.permisos.filter(p => p.perfil_id === adm || p.modulo === 'dashboard');
+      document.querySelectorAll('#tblMatriz select:not([disabled])').forEach(s => { if (s.value) ins('permisos', { perfil_id: +s.dataset.perfil, modulo: s.dataset.modulo, nivel: s.value }); });
+      return { ok: true, msg: 'Matriz de permisos guardada' };
+    });
+    r.ok ? ok(r.msg) : error(r.msg);
+  };
+  document.getElementById('btnReset').onclick = async () => {
+    if (!await confirmar('¿Reiniciar el demo?', 'Se borrarán todos los cambios y se cerrará la sesión.', 'Sí, reiniciar', true)) return;
+    db = sembrar(); guardar(); setSesion(null); await ok('Demo reiniciado'); location.hash = ''; mostrarLogin();
+  };
+};
+
+/* ---------------- arranque ---------------- */
+cargar();
+document.getElementById('frmLogin').addEventListener('submit', ev => {
+  ev.preventDefault();
+  const u = db.usuarios.find(x => x.usuario === document.getElementById('lgUsuario').value.trim().toLowerCase());
+  if (!u || u.clave !== document.getElementById('lgClave').value) return mostrarLogin('Usuario o contraseña incorrectos.');
+  if (u.estado !== 'Activo') return mostrarLogin('El usuario está inactivo. Contacta al administrador.');
+  u.ultimo_acceso = ahora(); guardar(); setSesion(u.id);
+  document.getElementById('lgClave').value = '';
+  if (location.hash && location.hash !== '#dashboard') location.hash = 'dashboard'; else irA();
+});
+document.getElementById('loginDemo').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return;
+  document.getElementById('lgUsuario').value = b.dataset.u; document.getElementById('lgClave').value = b.dataset.c; });
+document.getElementById('btnSalir').onclick = () => { setSesion(null); mostrarLogin(); };
+document.getElementById('btnMenu').onclick = () => document.getElementById('gtSidebar').classList.toggle('open');
+window.addEventListener('hashchange', irA);
+irA();
+</script>
+</body>
+</html>
